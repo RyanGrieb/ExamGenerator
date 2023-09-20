@@ -43,7 +43,7 @@ def listBlog():
 
     response = ''
     for c in rec:
-        response = response  + '<div>   Hello  ' + c + '</div>'
+        response = response  + '<div>   yeah we still got it:  ' + c + '</div>'
     return response
 
 

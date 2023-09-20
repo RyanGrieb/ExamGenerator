@@ -31,6 +31,11 @@ services:
     restart: always
     secrets:
       - db-password
+    # We use 'volumes' here for immediate file changes
+    # ./backend: is where your local backend code resides
+    # /code is the directory specified in the Dockerfile, inside the container
+    volumes:
+      - ./backend:/code
     ports:
       - 8000:8000
     networks:
