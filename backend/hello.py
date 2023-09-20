@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, render_template
 import mysql.connector
 
 
@@ -33,7 +33,18 @@ class DBManager:
 server = Flask(__name__)
 conn = None
 
+
 @server.route('/')
+def home():
+    global conn
+    if not conn:
+        conn = DBManager(password_file='/run/secrets/db-password')
+        conn.populate_db()
+    rec = conn.query_titles()
+
+    return render_template('index.html', rec=rec)
+
+@server.route('/dbtest')
 def listBlog():
     global conn
     if not conn:

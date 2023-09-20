@@ -1,4 +1,4 @@
-### PDF2Questions
+# PDF2Questions
 An AI web-app that scans PDFs and generates associated questions and answers.
 
 ## Features

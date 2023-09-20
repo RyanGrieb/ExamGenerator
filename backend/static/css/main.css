@@ -1,0 +1,16 @@
+body {
+    background-color:gray;
+}
+
+.upload-area {
+    margin: auto;
+    width: 50%;
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(255, 0, 0, 0.185);
+    width: 300px; /* Set your desired width */
+    height: 200px; /* Set your desired height */
+    border: 2px dashed #ccc; /* Optional: Add a dashed border for visual style */
+}
