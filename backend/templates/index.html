@@ -8,14 +8,26 @@
 </div>
 <div class="upload-area center-horizontally center-inside-elems">
     <form method="post" enctype="multipart/form-data">
-        <label class="button-1" for="file-upload">
-            <i class="fa fa-cloud-upload"></i> Upload File
-        </label>
-        <input id="file-upload" type="file" name="file" accept="application/pdf"></input>
-        <!-- <input type=submit value=Upload> -->
+
+        <div class="center-inside-elems">
+            <label class="button-1" for="file-upload">
+                <i class="fa fa-cloud-upload"></i> Upload File
+            </label>
+            <input id="file-upload" type="file" name="file" accept="application/pdf" multiple></input>
+            <!-- <input type=submit value=Upload> -->
+            <p>Max upload limit is 10MB, Sign up for more</p>
+            <div class="convert-region center-inside-elems">
+                <ul>
+                </ul>
+                <label class="file-convert-btn button-1" for="file-convert" style="display: none;">
+                    <i class="fa fa-cloud-upload"></i> Convert Files
+                </label>
+                <input id="file-convert" , type="submit" value="Upload"></input>
+            </div>
+        </div>
     </form>
 
-    <p>Max file size is 10MB, Sign up for more</p>
+
 </div>
 <!-- Temporary DB values test: -->
 <ul>

@@ -1,7 +1,10 @@
 body {
-    background-color:white;
+    /*background-color:white;*/
+    background: radial-gradient(circle, #ffffff, rgba(112, 24, 255, 0.116));
     font-family: 'Dejavu Sans', Arial, Verdana, sans-serif;
 }
+
+
 
 .center-horizontally {
     margin: auto;
@@ -17,14 +20,19 @@ body {
 
 
 .upload-area {    
+  padding: 4px;
     background-color:#3c4fe05d;
     width: 650px; /* Set your desired width */
-    height: 200px; /* Set your desired height */
+    min-height: 250px;
     border: 3px dashed #8377b9; /* Optional: Add a dashed border for visual style */
 }
 
 input[type="file"] {
     display: none;
+}
+
+input[type="submit"] {
+  display: none;
 }
 
 .button-1 {
