@@ -1,6 +1,22 @@
-{% extends 'base.html' %} {% block head %} {% endblock %} {% block body %}
-<h2>Welcome to PDF2Questions!</h2>
-<div class="upload-area">Upload PDF</div>
+{% extends 'base.html' %}
+{% block head %}
+<script src="{{ url_for('static',filename='js/index.js') }}"></script>
+{% endblock %} {% block body %}
+<div class="center-horizontally center-inside-elems">
+    <h1>PDF to Test Questions</h1>
+    <h2>Generate questions and answers from a PDF file.</h2>
+</div>
+<div class="upload-area center-horizontally center-inside-elems">
+    <form method="post" enctype="multipart/form-data">
+        <label class="button-1" for="file-upload">
+            <i class="fa fa-cloud-upload"></i> Upload File
+        </label>
+        <input id="file-upload" type="file" name="file" accept="application/pdf"></input>
+        <!-- <input type=submit value=Upload> -->
+    </form>
+
+    <p>Max file size is 10MB, Sign up for more</p>
+</div>
 <!-- Temporary DB values test: -->
 <ul>
     {% for item in rec %}
