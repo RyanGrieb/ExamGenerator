@@ -1,4 +1,5 @@
 import os
+import sys
 from flask import Flask, render_template, flash, request, redirect, url_for
 from werkzeug.utils import secure_filename
 import mysql.connector
@@ -49,22 +50,6 @@ server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 conn = None
 
 
-@server.route("/upload", methods=["POST"])
-def upload_file():
-    if "file" in request.files:
-        print("WORKING?")
-        file = request.files["file"]
-        if file.filename != "":
-            # The file field was triggered, and a file was uploaded
-            # You can now process the uploaded file
-            # For example, you can save it to a specific directory
-            # file.save("uploads/" + file.filename)
-            return "File uploaded successfully!"
-
-    # If 'file' not in request.files or no file selected, handle accordingly
-    return "No file selected or field not triggered."
-
-
 @server.route("/", methods=["GET", "POST"])
 def home():
     print("homepage")
@@ -81,20 +66,29 @@ def home():
         if "file" not in request.files:
             flash("No file part")
             return redirect(request.url)
-        file = request.files["file"]
-        # If the user does not select a file, the browser submits an
-        # empty file without a filename.
-        if file.filename == "":
+        print(request.files, file=sys.stderr)
+        files = request.files.getlist("file")
+        # Get a list of files from request.files
+        if len(files) < 1:
             flash("No selected file")
             return redirect(request.url)
-        if file and allowed_file(file.filename):
-            print("User uploaded pdf, redirecting..")
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(server.config["UPLOAD_FOLDER"], filename))
-            # TODO: Indicate the file is uploaded.
-            # return redirect(url_for("download_file", name=filename))
+
+        for file in files:
+            if file and allowed_file(file.filename):
+                print(
+                    "User uploaded pdf, redirecting.. {}".format(file), file=sys.stderr
+                )
+                filename = secure_filename(file.filename)
+                file.save(os.path.join(server.config["UPLOAD_FOLDER"], filename))
+
+        return redirect("results")
 
     return render_template("index.html", rec=rec)
+
+
+@server.route("/results")
+def results():
+    return render_template("results.html")
 
 
 @server.route("/dbtest")
