@@ -24,6 +24,19 @@ services:
       - 3306
       - 33060
 
+  unstructured-api:
+    image: quay.io/unstructured-io/unstructured-api:latest
+    restart: always
+    ports:
+      - "8001:8000"
+    networks:
+      - backnet
+    healthcheck:
+      test: ["CMD-SHELL", "echo", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   backend:
     build:
       context: backend
@@ -43,6 +56,8 @@ services:
       - frontnet
     depends_on:
       db:
+        condition: service_healthy
+      unstructured-api:
         condition: service_healthy
 
   proxy:

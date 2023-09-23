@@ -1,9 +1,12 @@
 import os
 import sys
-from flask import Flask, render_template, flash, request, redirect, url_for
-from werkzeug.utils import secure_filename
 import mysql.connector
+from flask import Flask, render_template, flash, request, redirect, url_for, session
+from werkzeug.utils import secure_filename
+import requests
 
+
+UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
 UPLOAD_FOLDER = "./pdf-uploads"
 ALLOWED_EXTENSIONS = {"pdf"}
 
@@ -66,14 +69,18 @@ def home():
         if "file" not in request.files:
             flash("No file part")
             return redirect(request.url)
-        print(request.files, file=sys.stderr)
+
         files = request.files.getlist("file")
         # Get a list of files from request.files
         if len(files) < 1:
             flash("No selected file")
             return redirect(request.url)
 
+        file_names = []
+
         for file in files:
+            file_names.append(file.filename)
+
             if file and allowed_file(file.filename):
                 print(
                     "User uploaded pdf, redirecting.. {}".format(file), file=sys.stderr
@@ -81,6 +88,7 @@ def home():
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(server.config["UPLOAD_FOLDER"], filename))
 
+        session["files"] = file_names
         return redirect("results")
 
     return render_template("index.html", rec=rec)
@@ -88,6 +96,45 @@ def home():
 
 @server.route("/results")
 def results():
+    # Get the list of files we are to process (these are already uploaded in storage)
+    files = session["files"]
+    session.pop("files")
+
+    for file in files:
+        file_path = f"./pdf-uploads/{file}"
+        file_data = {"files": open(file_path, "rb")}
+
+        headers = {"accept": "application/json"}
+        data = {
+            "encoding": "utf_8",
+            "include_page_breaks": "true",
+            "coordinates": "false",
+        }
+
+        response = requests.post(
+            UNSTRUCTUED_API_URL, headers=headers, data=data, files=file_data
+        )
+
+        print(response, file=sys.stderr)
+        print(response.status_code, file=sys.stderr)
+        print(response.text, file=sys.stderr)
+
+        file_data["files"].close()
+
+    # Start the conversion process
+
+    # 1. Convert the pdf to text
+    # filename = os.path.join(EXAMPLE_DOCS_DIRECTORY, "layout-parser-paper-fast.pdf")
+    # with open(filename, "rb") as f:
+    #    elements = partition(file=f, include_page_breaks=True)
+    #    print("\n\n".join([str(el) for el in elements][5:15]))
+
+    # 2. Break apart these text blocks into 'tokens', so we can use the chatgpt api
+
+    # 3. Call the chatgpt api and wait for the response
+
+    # 4. Take output & print it out to the user.
+
     return render_template("results.html")
 
 
