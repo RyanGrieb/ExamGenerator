@@ -99,13 +99,17 @@ def home():
 
 @server.route("/results")
 def results():
+    files = session.get("files")
+    if files is None:
+        return redirect("/")
+
+    session.pop("files")
+
     # Get the list of files we are to process (these are already uploaded in storage)
 
     # Start the conversion process
 
     # 1. Convert the pdf to text
-    files = session["files"]
-    session.pop("files")
 
     for file in files:
         file_path = f"./pdf-uploads/{file}"
