@@ -85,6 +85,9 @@ def home():
                 print(
                     "User uploaded pdf, redirecting.. {}".format(file), file=sys.stderr
                 )
+                # Create /pdf-uploads directory if it doesn't exist.
+                if not os.path.exists(server.config["UPLOAD_FOLDER"]):
+                    os.makedirs(server.config["UPLOAD_FOLDER"])
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(server.config["UPLOAD_FOLDER"], filename))
 
@@ -97,6 +100,10 @@ def home():
 @server.route("/results")
 def results():
     # Get the list of files we are to process (these are already uploaded in storage)
+
+    # Start the conversion process
+
+    # 1. Convert the pdf to text
     files = session["files"]
     session.pop("files")
 
@@ -120,14 +127,6 @@ def results():
         print(response.text, file=sys.stderr)
 
         file_data["files"].close()
-
-    # Start the conversion process
-
-    # 1. Convert the pdf to text
-    # filename = os.path.join(EXAMPLE_DOCS_DIRECTORY, "layout-parser-paper-fast.pdf")
-    # with open(filename, "rb") as f:
-    #    elements = partition(file=f, include_page_breaks=True)
-    #    print("\n\n".join([str(el) for el in elements][5:15]))
 
     # 2. Break apart these text blocks into 'tokens', so we can use the chatgpt api
 
