@@ -1,6 +1,22 @@
 {% extends 'base.html' %}
 {% block head %}
+<script type="text/javascript">
+    var file_names = []
+    var md5_names = []
+    {% for file_name in file_names %}
+    file_names.push("{{ file_name }}")
+    {% endfor %}
 
+    {% for md5_name in md5_names %}
+    md5_names.push("{{ md5_name }}")
+    {% endfor %}
+</script>
+<script src="{{ url_for('static',filename='js/results.js') }}"></script>
 {% endblock %} {% block body %}
-<p>Converting your files, please wait...</p>
+<p>Converting the following files, please wait...</p>
+<ul>
+    {% for file in file_names %}
+    <li id="{{ file }}">{{ file }} - Converting to text...</li>
+    {% endfor %}
+</ul>
 {% endblock %}
