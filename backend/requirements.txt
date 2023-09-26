@@ -1,4 +1,5 @@
-Flask==2.0.1
+quart==0.18.4
 mysql-connector==2.2.9
 requests==2.31.0
 openai==0.28.0
+aiohttp==3.8.5

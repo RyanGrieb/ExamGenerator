@@ -8,14 +8,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY . .
 
-ENV FLASK_APP hello.py
-ENV FLASK_ENV development
-ENV FLASK_RUN_PORT 8000
-ENV FLASK_RUN_HOST 0.0.0.0
+ENV QUART_APP hello.py
+ENV QUART_ENV development
+ENV QUART_RUN_PORT 8000
+ENV QUART_RUN_HOST 0.0.0.0
 
 EXPOSE 8000
 
-CMD ["flask", "run"]
+CMD ["quart", "run"]
 
 FROM builder AS dev-envs
 
@@ -32,4 +32,4 @@ EOF
 # install Docker tools (cli, buildx, compose)
 COPY --from=gloursdocker/docker / /
 
-CMD ["flask", "run"]
+CMD ["quart", "run"]

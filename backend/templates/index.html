@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block head %}
 <script src="{{ url_for('static',filename='js/index.js') }}"></script>
+<!-- <script src="{{ url_for('static',filename='js/index_fluff.js') }}"></script> -->
 {% endblock %} {% block body %}
 <div class="center-horizontally center-inside-elems">
     <h1>PDF to Test Questions</h1>
@@ -11,7 +12,7 @@
 
         <div class="center-inside-elems">
             <label class="button-1" for="file-upload">
-                <i class="fa fa-cloud-upload"></i> Upload File
+                <i class="fa fa-cloud-upload"></i> Upload Files
             </label>
             <input id="file-upload" type="file" name="file" accept="application/pdf" multiple></input>
             <!-- <input type=submit value=Upload> -->
@@ -29,11 +30,11 @@
 
 
 </div>
-<!-- Temporary DB values test: -->
+<!-- Temporary DB values test: 
 <ul style="display: none;">
     {% for item in rec %}
     <li>DB Test: {{ item }}</li>
     {% endfor %}
 </ul>
-
+-->
 {% endblock %}

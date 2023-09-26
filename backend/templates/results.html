@@ -16,7 +16,22 @@
 <p>Converting the following files, please wait...</p>
 <ul>
     {% for file in file_names %}
-    <li id="{{ file }}">{{ file }} - Converting to text...</li>
+    <li id="{{ file }}">{{ file }} - Converting to text...
+        <div class="lds-spinner">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </li>
     {% endfor %}
 </ul>
 {% endblock %}

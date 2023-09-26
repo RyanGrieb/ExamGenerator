@@ -3,9 +3,20 @@ import sys
 import json
 import openai
 import hashlib
+import asyncio
+import aiohttp
 import time
-import mysql.connector
-from flask import Flask, render_template, flash, request, redirect, url_for, session
+import uuid
+from quart import (
+    Quart,
+    render_template,
+    flash,
+    request,
+    redirect,
+    url_for,
+    session,
+    jsonify,
+)
 from werkzeug.utils import secure_filename
 import requests
 
@@ -16,17 +27,23 @@ UPLOAD_FOLDER = "./pdf-uploads"
 TEXT_FOLDER = "./pdf-text"
 ALLOWED_EXTENSIONS = {"pdf"}
 
-# Configure flask
-server = Flask(__name__)
+# Configure quart
+server = Quart(__name__)
 server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 server.config["TEXT_FOLDER"] = TEXT_FOLDER
+server.config["MAX_CONTENT_LENGTH"] = 10 * 1000 * 1024  # 10mb
+server.config[
+    "SEND_FILE_MAX_AGE_DEFAULT"
+] = 0  # For debugging our js files. Remove this in production.
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 conn = None
+task_status = {}
 
 # Configure OpenAI GPT
 openai.api_key = OPENAI_API_KEY
 
 
+"""
 class DBManager:
     def __init__(self, database="example", host="db", user="root", password_file=None):
         pf = open(password_file, "r")
@@ -57,6 +74,7 @@ class DBManager:
         for c in self.cursor:
             rec.append(c[0])
         return rec
+"""
 
 
 def allowed_file(filename: str):
@@ -64,26 +82,28 @@ def allowed_file(filename: str):
 
 
 @server.route("/", methods=["GET", "POST"])
-def home():
+async def home():
     print("homepage")
 
     # TODO: Have the files upload themselves automatically, and hide/disable the 'convert' button until all files oure uploaded.
     # Have this file upload progress displayed for the user.
 
-    global conn
-    if not conn:
-        conn = DBManager(password_file="/run/secrets/db-password")
-        conn.populate_db()
-    rec = conn.query_titles()
+    # global conn
+    # if not conn:
+    #    conn = DBManager(password_file="/run/secrets/db-password")
+    #    conn.populate_db()
+    # rec = conn.query_titles()
 
     if request.method == "POST":
-        print("post")
+        files_dict = await request.files
+        print(files_dict)
         # check if the post request has the file part
-        if "file" not in request.files:
+        if "file" not in files_dict:
             flash("No file part")
             return redirect(request.url)
 
-        files = request.files.getlist("file")
+        files = [file for file in files_dict.getlist("file")]
+        print(files)
         # Get a list of files from request.files
         if len(files) < 1:
             flash("No selected file")
@@ -115,56 +135,95 @@ def home():
                 # Release the pointer that reads the file so we can save it properly
                 file.stream.seek(0)
 
-                file.save(os.path.join(server.config["UPLOAD_FOLDER"], file.filename))
+                await file.save(
+                    os.path.join(server.config["UPLOAD_FOLDER"], file.filename)
+                )
 
         session["file_names"] = file_names
         session["md5_names"] = md5_names
         return redirect("results")
 
-    return render_template("index.html", rec=rec)
+    return await render_template("index.html")
 
 
-@server.route("/pdf2text", methods=["POST"])
-def pdf2text():
+async def async_pdf2text(filename, md5_name, task_id):
+    request_form = await request.form
     try:
         # Get the filename and md5_name from the POST request
-        filename = request.form.get("filename")
-        md5_name = request.form.get("md5_name")
+        filename = request_form.get("filename")
+        md5_name = request_form.get("md5_name")
 
         # Check if the variables are received correctly
         print("Received filename:", filename, file=sys.stderr)
         print("Received md5_name:", md5_name, file=sys.stderr)
 
         file_path = f"./pdf-uploads/{md5_name}.pdf"
-        file_data = {"files": open(file_path, "rb")}
+
+        # file_data = {"files": open(file_path, "rb")}
+        form_data = aiohttp.FormData()
+        form_data.add_field("files", open(file_path, "rb"))
+        form_data.add_field("encoding", "utf_8")
+        form_data.add_field("include_page_breaks", "true")
+        form_data.add_field("coordinates", "false")
 
         headers = {"accept": "application/json"}
-        data = {
-            "encoding": "utf_8",
-            "include_page_breaks": "true",
-            "coordinates": "false",
-        }
 
-        response = requests.post(
-            UNSTRUCTUED_API_URL, headers=headers, data=data, files=file_data
-        )
-        file_data["files"].close()
+        # fix session.post(...)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                UNSTRUCTUED_API_URL, headers=headers, data=form_data
+            ) as response:
+                if response.status == 200:
+                    response_text = await response.text()
+                    # TODO: Implement a keep-alive loop & cancel these post requests if terminated.
+                    # FIXME: Handle any errors thrown by unstructured api.
+                    # FIXME: Parse the JSON from respose.text and create a semi-formatted text-output from it.
 
-        # TODO: Implement a keep-alive loop & cancel these post requests if terminated.
-        # FIXME: Handle any errors thrown by unstructured api.
-        # FIXME: Parse the JSON from respose.text and create a semi-formatted text-output from it.
+                    # Create /pdf-text directory if it doesn't exist.
+                    if not os.path.exists(server.config["TEXT_FOLDER"]):
+                        os.makedirs(server.config["TEXT_FOLDER"])
 
-        # Create /pdf-text directory if it doesn't exist.
-        if not os.path.exists(server.config["TEXT_FOLDER"]):
-            os.makedirs(server.config["TEXT_FOLDER"])
+                    with open(
+                        f'{server.config["TEXT_FOLDER"]}/{md5_name}.txt', "w"
+                    ) as file:
+                        file.write(response_text)
 
-        with open(f'{server.config["TEXT_FOLDER"]}/{md5_name}.txt', "w") as file:
-            file.write(response.text)
+                    task_status[task_id] = "completed"
+                else:
+                    await asyncio.sleep(1)
+                    task_status[task_id] = "error"
 
-        # Return a response if needed
-        return "Received and processed filename: {} with md5_name: {}".format(
-            filename, md5_name
-        )
+    except Exception as e:
+        # Handle exceptions or errors here
+        print("Error:", str(e), file=sys.stderr)
+        task_status[task_id] = "error"
+
+
+@server.route("/task_status/<task_id>", methods=["GET"])
+def get_task_status(task_id):
+    # Retrieve the status of a specific task
+    status = task_status.get(task_id, "not_found")
+    return jsonify({"status": status})
+
+
+@server.route("/pdf2text", methods=["POST"])
+async def post_pdf2text():
+    request_form = await request.form
+    try:
+        filename = request_form.get("filename")
+        md5_name = request_form.get("md5_name")
+
+        # Generate a unique task ID
+        task_id = str(uuid.uuid4())
+
+        # Store task status as 'processing'
+        task_status[task_id] = "processing"
+
+        # Start the processing task asynchronously
+        server.add_background_task(async_pdf2text, filename, md5_name, task_id)
+
+        # Return the task ID to the client
+        return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
 
     except Exception as e:
         # Handle exceptions or errors here
@@ -178,7 +237,7 @@ def text2questions():
 
 
 @server.route("/results", methods=["GET", "POST"])
-def results():
+async def results():
     file_names = session.get("file_names")
     md5_names = session.get("md5_names")
     if file_names is None or md5_names is None:
@@ -284,7 +343,9 @@ def results():
 
             # 4. Take final output from ChatGPT & print it out to the user.
 
-    return render_template("results.html", file_names=file_names, md5_names=md5_names)
+    return await render_template(
+        "results.html", file_names=file_names, md5_names=md5_names
+    )
 
 
 @server.route("/dbtest")
