@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block head %}
-<script src="{{ url_for('static',filename='js/index.js') }}"></script>
-<!-- <script src="{{ url_for('static',filename='js/index_fluff.js') }}"></script> -->
+<script src="{{ url_for('static',filename='js/index.js') }}?u={{ last_updated }}"></script>
+<!-- <script src="{{ url_for('static',filename='js/index_fluff.js') }}?u={{ last_updated }}"></script> -->
 {% endblock %} {% block body %}
 <div class="center-horizontally center-inside-elems">
     <h1>PDF to Test Questions</h1>

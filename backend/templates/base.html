@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <link rel="stylesheet" href="{{ url_for('static',filename='css/main.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/main.css') }}?u={{ last_updated }}" />
     <meta charset="UTF-8">
     <title>PDF2Questions</title>
     {% block head %}{% endblock %}

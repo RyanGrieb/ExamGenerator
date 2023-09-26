@@ -11,26 +11,14 @@
     md5_names.push("{{ md5_name }}")
     {% endfor %}
 </script>
-<script src="{{ url_for('static',filename='js/results.js') }}"></script>
+<script src="{{ url_for('static',filename='js/results.js') }}?u={{ last_updated }}"></script>
 {% endblock %} {% block body %}
 <p>Converting the following files, please wait...</p>
-<ul>
+<ul class="converted-files-list">
     {% for file in file_names %}
-    <li id="{{ file }}">{{ file }} - Converting to text...
-        <div class="lds-spinner">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-        </div>
+    <li id="{{ file }}">
+        <div class="loader"></div>
+        <b>{{ file }}</b> - Converting to text...
     </li>
     {% endfor %}
 </ul>

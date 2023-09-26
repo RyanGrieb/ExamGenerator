@@ -32,9 +32,6 @@ server = Quart(__name__)
 server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 server.config["TEXT_FOLDER"] = TEXT_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 10 * 1000 * 1024  # 10mb
-server.config[
-    "SEND_FILE_MAX_AGE_DEFAULT"
-] = 0  # For debugging our js files. Remove this in production.
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 conn = None
 task_status = {}
@@ -75,6 +72,16 @@ class DBManager:
             rec.append(c[0])
         return rec
 """
+
+
+def dir_last_updated(folder):
+    return str(
+        max(
+            os.path.getmtime(os.path.join(root_path, f))
+            for root_path, dirs, files in os.walk(folder)
+            for f in files
+        )
+    )
 
 
 def allowed_file(filename: str):
@@ -143,7 +150,9 @@ async def home():
         session["md5_names"] = md5_names
         return redirect("results")
 
-    return await render_template("index.html")
+    return await render_template(
+        "index.html", last_updated=dir_last_updated("./static")
+    )
 
 
 async def async_pdf2text(filename, md5_name, task_id):
@@ -344,7 +353,7 @@ async def results():
             # 4. Take final output from ChatGPT & print it out to the user.
 
     return await render_template(
-        "results.html", file_names=file_names, md5_names=md5_names
+        "results.html", file_names=file_names, md5_names=md5_names, last_updated=dir_last_updated("./static")
     )
 
 
