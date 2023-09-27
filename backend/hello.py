@@ -155,6 +155,37 @@ async def home():
     )
 
 
+async def async_text2questions(filename, md5_name, task_id):
+    json_data = None
+    with open(f"./pdf-text/{md5_name}.txt", "r") as file:
+        json_data = json.load(file)
+
+        text_chunks: list[str] = []
+        chunk_index = 0
+
+        for item in json_data:
+            title = None
+
+            if "text" in item:
+                text = item["text"]
+
+                if len(text) < 1:
+                    continue
+                if len(text_chunks) <= chunk_index:
+                    text_chunks.append("")
+
+                if title is not None:
+                    text_chunks[chunk_index] += f"|TITLE: {title}|"
+
+                text_chunks[chunk_index] += f"|{text}|"
+
+                if len(text_chunks[chunk_index]) > 1000:
+                    chunk_index += 1
+
+        for chunk in text_chunks:
+            print(f"{chunk}\n", file=sys.stderr)
+
+
 async def async_pdf2text(filename, md5_name, task_id):
     request_form = await request.form
     try:
@@ -216,7 +247,7 @@ def get_task_status(task_id):
 
 
 @server.route("/pdf2text", methods=["POST"])
-async def post_pdf2text():
+async def pdf2text():
     request_form = await request.form
     try:
         filename = request_form.get("filename")
@@ -240,9 +271,32 @@ async def post_pdf2text():
         return "Error processing the request"
 
 
-@server.route("/text2questions", methods=["POST"])
-def text2questions():
-    return None
+@server.route("/text2questions", methods=["GET", "POST"])
+async def text2questions():
+    request_form = await request.form
+    try:
+        filename = request_form.get("filename")
+        md5_name = request_form.get("md5_name")
+
+        # Generate a unique task ID
+        task_id = str(uuid.uuid4())
+
+        # Store task status as 'processing'
+        task_status[task_id] = "processing"
+
+        if request.method == "POST":
+            server.add_background_task(
+                async_text2questions, filename, md5_name, task_id
+            )
+
+        # Return the task ID to the client
+        return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
+
+    except Exception as e:
+        # Handle exceptions or errors here
+        print("Error:", str(e), file=sys.stderr)
+        return "Error processing the request"
+        # Have GPT pre-process these raw chunks
 
 
 @server.route("/results", methods=["GET", "POST"])
@@ -353,7 +407,10 @@ async def results():
             # 4. Take final output from ChatGPT & print it out to the user.
 
     return await render_template(
-        "results.html", file_names=file_names, md5_names=md5_names, last_updated=dir_last_updated("./static")
+        "results.html",
+        file_names=file_names,
+        md5_names=md5_names,
+        last_updated=dir_last_updated("./static"),
     )
 
 

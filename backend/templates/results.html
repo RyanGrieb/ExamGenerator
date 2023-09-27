@@ -18,7 +18,7 @@
     {% for file in file_names %}
     <li id="{{ file }}">
         <div class="loader"></div>
-        <b>{{ file }}</b> - Converting to text...
+        <b>{{ file }}</b> - <p id="{{ file }}">Converting to text...</p>
     </li>
     {% endfor %}
 </ul>

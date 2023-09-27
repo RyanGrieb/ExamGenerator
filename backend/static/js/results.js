@@ -1,17 +1,16 @@
 // Dictionary that associates the task_id with the filename
-task_id_filename_dict = {}
+task_id_filename_dict = {};
+task_id_md5_name_dict = {};
 
 function set_file_status(filename, status) {
-  document.getElementById(filename).innerText = filename + " - " + status;
+  p_element = document.querySelector(`#${filename} p`)
+  p_element.textContent = status;
 }
 
-function post_text2questions(filename, md5_name){
-
-}
-
+function add_questions_to_page(filename, questions) {}
 
 // Function to periodically check task status
-async function checkTaskStatus(task_id) {
+async function checkTaskStatus(task_id, callback) {
   // Define your logic to check task status here
   // You can use setInterval or any other mechanism to check status periodically
   // Example:
@@ -27,21 +26,74 @@ async function checkTaskStatus(task_id) {
       if (statusData.status === "completed") {
         clearInterval(interval); // Stop checking once it's complete
         console.log(`Task with ID ${task_id} is complete.`);
-        set_file_status(task_id_filename_dict[task_id],"Generating questions & answers...")
-        delete task_id_filename_dict[task_id]
+        callback(
+          task_id,
+          task_id_filename_dict[task_id],
+          task_id_md5_name_dict[task_id]
+        );
+        delete task_id_filename_dict[task_id];
+        delete task_id_md5_name_dict[task_id];
         // You can perform further actions here
       } else if (statusData.status === "processing") {
         console.log(`Task with ID ${task_id} is still processing.`);
         // Handle ongoing processing if needed
       } else {
-        console.error(`Unknown status for task with ID ${task_id}: ${statusData.status}`);
+        console.error(
+          `Unknown status for task with ID ${task_id}: ${statusData.status}`
+        );
         clearInterval(interval); // Stop checking on error
       }
     } else {
-      console.error(`Error checking task status for task ID ${task_id}: ${statusResponse.status}`);
+      console.error(
+        `Error checking task status for task ID ${task_id}: ${statusResponse.status}`
+      );
       clearInterval(interval); // Stop checking on error
     }
   }, 5000); // Check every 5 seconds (adjust this as needed)
+}
+
+async function get_text2questions(filename, md5_name) {
+  // When we get a good response:
+  const questions = undefined;
+  add_questions_to_page(filename, questions);
+}
+
+async function post_text2questions(filename, md5_name) {
+  try {
+    // Create a FormData object to send data with the POST request
+    const formData = new FormData();
+    formData.append("filename", filename);
+    formData.append("md5_name", md5_name);
+
+    // Send a POST request to the server and wait for the response
+    const response = await fetch("/text2questions", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.ok) {
+      const responseData = await response.json();
+      const task_id = responseData.task_id;
+
+      task_id_filename_dict[task_id] = filename;
+      task_id_md5_name_dict[task_id] = md5_name;
+
+      // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
+      checkTaskStatus(task_id, (task_id, filename, md5_name) => {
+        console.log(
+          "Text2Questions callback done: " + task_id + " | " + filename
+        );
+        // Send a GET request for the questions generated server-side
+        get_text2questions(filename, md5_name);
+      });
+    } else {
+      // Handle network or other errors here
+      console.error(`Error sending ${filename} to the server: ${error}`);
+    }
+  } catch (error) {
+    // Handle network or other errors here
+    console.error(`Error sending ${filename} to the server: ${error}`);
+  }
 }
 
 async function post_pdf2text(filename, md5_name) {
@@ -59,11 +111,17 @@ async function post_pdf2text(filename, md5_name) {
 
     if (response.ok) {
       const responseData = await response.json();
-      const task_id = responseData.task_id
-      task_id_filename_dict[task_id] = filename
-      console.log(task_id_filename_dict)
+      const task_id = responseData.task_id;
+
+      task_id_filename_dict[task_id] = filename;
+      task_id_md5_name_dict[task_id] = md5_name;
+
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
-      checkTaskStatus(task_id)
+      checkTaskStatus(task_id, (task_id, filename, md5_name) => {
+        console.log("pfd2text callback done: " + task_id + " | " + filename);
+        set_file_status(filename, "Generating questions and answers...")
+        post_text2questions(filename, md5_name);
+      });
       // TOOD: Handle the completion response for checkTaskStatus here....
     } else {
       // Handle errors here
@@ -74,7 +132,6 @@ async function post_pdf2text(filename, md5_name) {
     console.error(`Error sending ${filename} to the server: ${error}`);
   }
 }
-
 
 window.addEventListener("load", () => {
   // Test output to see if our variables got initalized (they usually are)
@@ -88,6 +145,6 @@ window.addEventListener("load", () => {
     const filename = file_names[i];
     const md5_name = md5_names[i];
 
-    post_pdf2text(filename,md5_name)
+    post_pdf2text(filename, md5_name);
   }
 });

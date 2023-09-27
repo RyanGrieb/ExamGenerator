@@ -4,6 +4,10 @@ body {
   font-family: "Dejavu Sans", Arial, Verdana, sans-serif;
 }
 
+li p {
+  display: inline;
+}
+
 .center-horizontally {
   margin: auto;
   width: 50%;
