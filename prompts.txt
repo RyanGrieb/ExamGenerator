@@ -1,0 +1,9 @@
+Send this data as 4 API calls (we need to do this for accuracy), with each new call using the new parsed chunks from the previous one:
+
+1. Remove page numbers (For example: |23|) from the following two chunks:\nChunk1: {}\nChunk2: {}
+
+2. Remove the |tokens| from the following two chunks:\nChunk1: {}\nChunk2: {}
+
+3. Read the two chunks, and remove duplicate data/sentences from both chunks if present.\nChunk1: {}\nChunk2: {}
+
+4. Check if information is cut off between the two chunks (e.g. a sentence is split), if true, format the chunks so they both start and end properly.

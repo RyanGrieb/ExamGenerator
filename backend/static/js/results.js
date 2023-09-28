@@ -96,7 +96,7 @@ async function post_text2questions(filename, md5_name) {
   }
 }
 
-async function post_pdf2text(filename, md5_name) {
+async function post_pdf2json(filename, md5_name) {
   try {
     // Create a FormData object to send data with the POST request
     const formData = new FormData();
@@ -104,7 +104,7 @@ async function post_pdf2text(filename, md5_name) {
     formData.append("md5_name", md5_name);
 
     // Send a POST request to the server and wait for the response
-    const response = await fetch("/pdf2text", {
+    const response = await fetch("/pdf2json", {
       method: "POST",
       body: formData,
     });
@@ -118,7 +118,7 @@ async function post_pdf2text(filename, md5_name) {
 
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
       checkTaskStatus(task_id, (task_id, filename, md5_name) => {
-        console.log("pfd2text callback done: " + task_id + " | " + filename);
+        console.log("pfd2json callback done: " + task_id + " | " + filename);
         set_file_status(filename, "Generating questions and answers...")
         post_text2questions(filename, md5_name);
       });
@@ -145,6 +145,6 @@ window.addEventListener("load", () => {
     const filename = file_names[i];
     const md5_name = md5_names[i];
 
-    post_pdf2text(filename, md5_name);
+    post_pdf2json(filename, md5_name);
   }
 });

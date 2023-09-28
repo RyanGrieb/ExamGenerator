@@ -1,3 +1,4 @@
 /backend/__pycache__
 /backend/pdf-uploads
-/backend/pdf-text
+/backend/pdf-json
+/backend/pdf-qa

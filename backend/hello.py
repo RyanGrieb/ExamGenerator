@@ -7,6 +7,8 @@ import asyncio
 import aiohttp
 import time
 import uuid
+import re
+
 from quart import (
     Quart,
     render_template,
@@ -24,13 +26,13 @@ import requests
 UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
 OPENAI_API_KEY = "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"
 UPLOAD_FOLDER = "./pdf-uploads"
-TEXT_FOLDER = "./pdf-text"
+JSON_FOLDER = "./pdf-json"
 ALLOWED_EXTENSIONS = {"pdf"}
 
 # Configure quart
 server = Quart(__name__)
 server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-server.config["TEXT_FOLDER"] = TEXT_FOLDER
+server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 10 * 1000 * 1024  # 10mb
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 conn = None
@@ -86,6 +88,33 @@ def dir_last_updated(folder):
 
 def allowed_file(filename: str):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_chunks_from_gpt_response(response_content: str):
+    lines = response_content.split("\n")
+    lines = [line for line in lines if line.strip()]  # Remove empty string elements
+    chunk1 = lines[0].partition("Chunk1: ")[-1]
+    chunk2 = lines[1].partition("Chunk2: ")[-1]
+    return (chunk1, chunk2)
+
+
+def remove_duplicates(chunk1, chunk2):
+    tokens_1 = [token for token in chunk1.split("|") if token.strip()]
+    tokens_2 = [token for token in chunk2.split("|") if token.strip()]
+
+    tokens_1_copy = tokens_1.copy()
+
+    for token_1 in tokens_1_copy:
+        if token_1 in tokens_2:
+            while token_1 in tokens_1:
+                tokens_1.remove(token_1)
+            while token_1 in tokens_2:
+                tokens_2.remove(token_1)
+
+    formatted_chunk_1 = "|" + "|".join(tokens_1) + "|"
+    formatted_chunk_2 = "|" + "|".join(tokens_2) + "|"
+
+    return (formatted_chunk_1, formatted_chunk_2)
 
 
 @server.route("/", methods=["GET", "POST"])
@@ -157,7 +186,7 @@ async def home():
 
 async def async_text2questions(filename, md5_name, task_id):
     json_data = None
-    with open(f"./pdf-text/{md5_name}.txt", "r") as file:
+    with open(f"./pdf-json/{md5_name}.json", "r") as file:
         json_data = json.load(file)
 
         text_chunks: list[str] = []
@@ -171,6 +200,7 @@ async def async_text2questions(filename, md5_name, task_id):
 
                 if len(text) < 1:
                     continue
+
                 if len(text_chunks) <= chunk_index:
                     text_chunks.append("")
 
@@ -182,11 +212,42 @@ async def async_text2questions(filename, md5_name, task_id):
                 if len(text_chunks[chunk_index]) > 1000:
                     chunk_index += 1
 
-        for chunk in text_chunks:
-            print(f"{chunk}\n", file=sys.stderr)
+        # Send two chunks to gpt, and have it parse the data between them.
+        # If odd number of chunks, take the previous one at the end.
+        for i in range(0, len(text_chunks), 2):
+            chunk1 = text_chunks[i]
+            chunk2 = "N/A"
+            if i + 1 < len(text_chunks):
+                chunk2 = text_chunks[i + 1]
+            else:
+                chunk1 = text_chunks[i - 1]
+                chunk2 = text_chunks[i]
+
+            # 1. Remove page number tokens: (FIXME: DO THIS OURSELVES WE DONT NEED TO CALL API)
+            chunk1 = re.sub(r"\|\d+\|", "", chunk1)
+            chunk2 = re.sub(r"\|\d+\|", "", chunk2)
+            # 2. Remove duplicate tokens (WE DO THIS OURSELVES)
+            chunk1, chunk2 = remove_duplicates(chunk1, chunk2)
+            # 3. Remove tokens & create normal sentences:
+            print(
+                f"3. Before removing all tokens:\n Chunk1: {chunk1}\nChunk2: {chunk2}"
+            )
+
+            prompt = f"Remove the '|' characters from the following two chunks to form proper sentences with spaces, bullet points, and other proper formatting. You should not respond with empty chunks. Here are the two chunks:\nChunk1: {chunk1}\nChunk2: {chunk2}"
+
+            print(f"PROMPT: {prompt}")
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            print(response)
+            response_content = response["choices"][0]["message"]["content"]
+            chunk1, chunk2 = get_chunks_from_gpt_response(response_content)
+            print(f"3. After removing all tokens:\n Chunk1: {chunk1}\nChunk2: {chunk2}")
+            break
 
 
-async def async_pdf2text(filename, md5_name, task_id):
+async def async_pdf2json(filename, md5_name, task_id):
     request_form = await request.form
     try:
         # Get the filename and md5_name from the POST request
@@ -219,12 +280,12 @@ async def async_pdf2text(filename, md5_name, task_id):
                     # FIXME: Handle any errors thrown by unstructured api.
                     # FIXME: Parse the JSON from respose.text and create a semi-formatted text-output from it.
 
-                    # Create /pdf-text directory if it doesn't exist.
-                    if not os.path.exists(server.config["TEXT_FOLDER"]):
-                        os.makedirs(server.config["TEXT_FOLDER"])
+                    # Create /pdf-json directory if it doesn't exist.
+                    if not os.path.exists(server.config["JSON_FOLDER"]):
+                        os.makedirs(server.config["JSON_FOLDER"])
 
                     with open(
-                        f'{server.config["TEXT_FOLDER"]}/{md5_name}.txt', "w"
+                        f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w"
                     ) as file:
                         file.write(response_text)
 
@@ -246,8 +307,8 @@ def get_task_status(task_id):
     return jsonify({"status": status})
 
 
-@server.route("/pdf2text", methods=["POST"])
-async def pdf2text():
+@server.route("/pdf2json", methods=["POST"])
+async def pdf2json():
     request_form = await request.form
     try:
         filename = request_form.get("filename")
@@ -260,7 +321,7 @@ async def pdf2text():
         task_status[task_id] = "processing"
 
         # Start the processing task asynchronously
-        server.add_background_task(async_pdf2text, filename, md5_name, task_id)
+        server.add_background_task(async_pdf2json, filename, md5_name, task_id)
 
         # Return the task ID to the client
         return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
@@ -308,103 +369,6 @@ async def results():
 
     session.pop("file_names")
     session.pop("md5_names")
-
-    # Get the list of files we are to process (these are already uploaded in storage)
-
-    # Start the conversion process
-
-    # 1. Convert the pdf to text
-    if request.method == "POST":
-        for file in file_names:
-            file_path = f"./pdf-uploads/{file}"
-            file_data = {"files": open(file_path, "rb")}
-
-            headers = {"accept": "application/json"}
-            data = {
-                "encoding": "utf_8",
-                "include_page_breaks": "true",
-                "coordinates": "false",
-            }
-
-            response = requests.post(
-                UNSTRUCTUED_API_URL, headers=headers, data=data, files=file_data
-            )
-
-            file_data["files"].close()
-            # print(response, file=sys.stderr)
-            # print(response.status_code, file=sys.stderr)
-            print(response.text, file=sys.stderr)
-
-            # 2. Break apart these text blocks into 'chunks'. We keep 1K character space so
-            # we can add onto these chunks if there split between sentences or important sections.
-
-            # FIXME: INDICATE PAGE NUMBERS WHEN SEPERATING.
-
-            text_chunks: list[str] = []
-            chunk_index = 0
-            json_data = json.loads(response.text)
-
-            for item in json_data:
-                title = None
-
-                if "text" in item:
-                    text = item["text"]
-
-                    if len(text) < 1:
-                        continue
-                    if len(text_chunks) <= chunk_index:
-                        text_chunks.append("")
-
-                    if title is not None:
-                        text_chunks[chunk_index] += f"|TITLE: {title}|"
-
-                    text_chunks[chunk_index] += f"|{text}|"
-
-                    if len(text_chunks[chunk_index]) > 1000:
-                        chunk_index += 1
-
-            # for chunk in text_chunks:
-            #    print(f"{chunk}\n", file=sys.stderr)
-
-            print(f"Raw chunks length:{len(text_chunks)}", file=sys.stderr)
-
-            print(
-                f"Pre-Chunk #1: \n{text_chunks[0]} \n Pre-Chunk #2: \n{text_chunks[1]}",
-                file=sys.stderr,
-            )
-            # 3. Get ChatGPT to compare two 1K chunks, and pick a new index to split the two. This way we
-            # can create new chunks that don't cut off sentences or paragraphs.
-            # We also perform formatting like |...text...| => ...text...
-            # create a chat completion
-
-            """
-            chat_completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"Format the following information into a structured text block: {text_chunks[0]}",
-                    }
-                ],
-            )
-        
-            chat_completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"Separate the following raw chunks into two distinct chunks, preserving the data in between. Keep the raw formatting of |text|, we'll process it later.: \nChunk #1:{text_chunks[0]} \nChunk # 2: {text_chunks[1]}",
-                    }
-                ],
-            )
-
-            # print the chat completion
-            print(chat_completion.choices[0].message.content, file=sys.stderr)
-    """
-            # 4. After formatting and getting the chunks to not cut off important information,
-            # get ChatGPT to process these chunks into multiple Q&A responses.
-
-            # 4. Take final output from ChatGPT & print it out to the user.
 
     return await render_template(
         "results.html",
