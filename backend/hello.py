@@ -90,14 +90,13 @@ def allowed_file(filename: str):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def get_chunks_from_gpt_response(response_content: str):
-    lines = response_content.split("\n")
-    lines = [line for line in lines if line.strip()]  # Remove empty string elements
-    chunk1 = lines[0].partition("Chunk1: ")[-1]
-    chunk2 = lines[1].partition("Chunk2: ")[-1]
+def get_chunks_from_gpt_response(response_chunks: str):
+    chunk1 = response_chunks.partition("Chunk1: ")[-1].partition("Chunk2:")[0].strip()
+    chunk2 = response_chunks.partition("Chunk2:")[-1].strip()
     return (chunk1, chunk2)
 
 
+# Remove duplicate tokens given two provided chunks.
 def remove_duplicates(chunk1, chunk2):
     tokens_1 = [token for token in chunk1.split("|") if token.strip()]
     tokens_2 = [token for token in chunk2.split("|") if token.strip()]
@@ -214,6 +213,9 @@ async def async_text2questions(filename, md5_name, task_id):
 
         # Send two chunks to gpt, and have it parse the data between them.
         # If odd number of chunks, take the previous one at the end.
+        new_text_chunks = (
+            []
+        )  # TODO: From this for loop, append our new chunks to this list, after loop finishes update text_chunks
         for i in range(0, len(text_chunks), 2):
             chunk1 = text_chunks[i]
             chunk2 = "N/A"
@@ -230,20 +232,47 @@ async def async_text2questions(filename, md5_name, task_id):
             chunk1, chunk2 = remove_duplicates(chunk1, chunk2)
             # 3. Remove tokens & create normal sentences:
             print(
-                f"3. Before removing all tokens:\n Chunk1: {chunk1}\nChunk2: {chunk2}"
+                f"1. Before removing all tokens:\n Chunk1: {chunk1}\nChunk2: {chunk2}"
             )
 
-            prompt = f"Remove the '|' characters from the following two chunks to form proper sentences with spaces, bullet points, and other proper formatting. You should not respond with empty chunks. Here are the two chunks:\nChunk1: {chunk1}\nChunk2: {chunk2}"
+            prompt = f"Remove the '|' characters from the following two chunks to form proper sentences with spaces, bullet points, and other proper formatting. You should not respond with empty chunks.\nRespond with this only: Chunk1: [your_output] Chunk2: [your_output]\nHere are the two chunks:\nChunk1: {chunk1}\nChunk2: {chunk2}"
 
-            print(f"PROMPT: {prompt}")
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
             )
+
+            response_chunks: str = response["choices"][0]["message"]["content"]
+            # print(response_chunks)
+
+            chunk1, chunk2 = get_chunks_from_gpt_response(response_chunks)
+            print(
+                f"2. After removing all tokens:\n Chunk1: [[{chunk1}]]\nChunk2: [[{chunk2}]]"
+            )
+
+            print("3. Resize chunks stop information from getting cut off:")
+            prompt = f"Determine if information is cut off between Chunk1 and Chunk2, if so: Transfer the text cut off from Chunk2 to Chunk1, then remove the text used from Chunk2. This allows us to read information properly when viewing one individual chunk.\nIf no information is cut off, dont make any changes.\nYou should not respond with empty chunks.\nRespond with this only: Chunk1: [your_output] Chunk2: [your_output]\nHere are the two chunks:\nChunk1: {chunk1}\nChunk2: {chunk2}"
+
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            chunk1, chunk2 = get_chunks_from_gpt_response(response_chunks)
+            print(
+                f"4. After fixing cut off information:\n Chunk1: [[{chunk1}]]\nChunk2: [[{chunk2}]]"
+            )
+
+            print("5. Generate Q&A from chunks TEST TEMP:")
+
+            prompt = f"Generate questions and answers based on the following data provided,\nonly respond with the format Q: ... A: ...\nData: {chunk1}"
+
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+            )
+
             print(response)
-            response_content = response["choices"][0]["message"]["content"]
-            chunk1, chunk2 = get_chunks_from_gpt_response(response_content)
-            print(f"3. After removing all tokens:\n Chunk1: {chunk1}\nChunk2: {chunk2}")
             break
 
 
