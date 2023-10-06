@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY . .
 
-ENV QUART_APP hello.py
+ENV QUART_APP src.__init__
 ENV QUART_ENV development
 ENV QUART_RUN_PORT 8000
 ENV QUART_RUN_HOST 0.0.0.0

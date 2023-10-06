@@ -25,9 +25,9 @@ import requests
 
 UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
 OPENAI_API_KEY = "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"
-UPLOAD_FOLDER = "./pdf-uploads"
-JSON_FOLDER = "./pdf-json"
-QA_FOLDER = "./pdf-qa"
+UPLOAD_FOLDER = "./data/pdf-uploads"
+JSON_FOLDER = "./data/pdf-json"
+QA_FOLDER = "./data/pdf-qa"
 ALLOWED_EXTENSIONS = {"pdf"}
 
 # Configure quart
@@ -82,7 +82,7 @@ def dir_last_updated(folder):
     return str(
         max(
             os.path.getmtime(os.path.join(root_path, f))
-            for root_path, dirs, files in os.walk(folder)
+            for root_path, _, files in os.walk(folder)
             for f in files
         )
     )
@@ -261,12 +261,12 @@ async def home():
         return redirect("results")
 
     return await render_template(
-        "index.html", last_updated=dir_last_updated("./static")
+        "index.html", last_updated=dir_last_updated("./src/static")
     )
 
 
 async def async_text2questions(filename, md5_name, task_id):
-    with open(f"./pdf-json/{md5_name}.json", "r") as file:
+    with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "r") as file:
         json_data = json.load(file)
 
         text_chunks: list[str] = []
@@ -380,7 +380,7 @@ async def async_pdf2json(filename, md5_name, task_id):
         print("Received filename:", filename, file=sys.stderr)
         print("Received md5_name:", md5_name, file=sys.stderr)
 
-        file_path = f"./pdf-uploads/{md5_name}.pdf"
+        file_path = f'{server.config["UPLOAD_FOLDER"]}/{md5_name}.pdf'
 
         # file_data = {"files": open(file_path, "rb")}
         form_data = aiohttp.FormData()
@@ -424,7 +424,7 @@ async def async_pdf2json(filename, md5_name, task_id):
 
 @server.route("/pdf-qa/<md5_name>", methods=["GET"])
 def get_pdf_qa(md5_name):
-    with open(f"./pdf-qa/{md5_name}.txt", "r") as file:
+    with open(f'{server.config["QA_FOLDER"]}/{md5_name}.txt', "r") as file:
         return file.read()
 
 
@@ -499,7 +499,7 @@ async def results():
         "results.html",
         file_names=file_names,
         md5_names=md5_names,
-        last_updated=dir_last_updated("./static"),
+        last_updated=dir_last_updated("./src/static"),
     )
 
 
