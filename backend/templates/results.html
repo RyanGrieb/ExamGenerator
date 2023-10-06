@@ -13,13 +13,21 @@
 </script>
 <script src="{{ url_for('static',filename='js/results.js') }}?u={{ last_updated }}"></script>
 {% endblock %} {% block body %}
-<p>Converting the following files, please wait...</p>
-<ul class="converted-files-list">
-    {% for file in file_names %}
-    <li id="{{ file }}">
-        <div class="loader"></div>
-        <b>{{ file }}</b> - <p id="{{ file }}">Converting to text...</p>
-    </li>
-    {% endfor %}
-</ul>
+<div>
+    <p class="status-text">Converting the following files, please wait...</p>
+    <div class="converting-div">
+        <ul class="converted-files-list">
+            {% for file in file_names %}
+            <li id="{{ file }}">
+                <div class="loader"></div>
+                <b>{{ file }}</b> - <p id="{{ file }}">Converting to text...</p>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="qa-set">
+        <p>Generated Questions & Answers:</p>
+    </div>
+</div>
+
 {% endblock %}

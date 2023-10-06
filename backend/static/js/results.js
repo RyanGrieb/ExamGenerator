@@ -3,11 +3,31 @@ task_id_filename_dict = {};
 task_id_md5_name_dict = {};
 
 function set_file_status(filename, status) {
-  p_element = document.querySelector(`#${filename} p`)
+  p_element = document.querySelector(`#${filename} p`);
   p_element.textContent = status;
 }
 
-function add_questions_to_page(filename, questions) {}
+function add_qa_set_to_page(filename, qa_set, final_generation = false) {
+  const qaSetDiv = document.querySelector(".qa-set");
+  document.querySelector(".status-text").innerHTML = "Generated Q&As:";
+
+  if (final_generation) {
+    document.querySelector(".converting-div").remove();
+  }
+
+  // FIXME: JUST PUT A \n before each Q: element. (except the 1st one)
+  qa_set.split("\n").forEach((line, index) => {
+    const paragraph = document.createElement("p");
+    
+    // Add newline space between each Q&A set
+    if (index != 0 && index % 2 == 0) {
+      qaSetDiv.appendChild(document.createElement("br"))
+    }
+
+    paragraph.textContent = line;
+    qaSetDiv.appendChild(paragraph);
+  });
+}
 
 // Function to periodically check task status
 async function checkTaskStatus(task_id, callback) {
@@ -53,9 +73,21 @@ async function checkTaskStatus(task_id, callback) {
 }
 
 async function get_text2questions(filename, md5_name) {
-  // When we get a good response:
-  const questions = undefined;
-  add_questions_to_page(filename, questions);
+  // Send a GET request to the server and wait for the response
+  console.log("Fetch generated q&a set from server:");
+  const formData = new FormData();
+  formData.append("filename", filename);
+  formData.append("md5_name", md5_name);
+
+  const response = await fetch(`/pdf-qa/${md5_name}`, {
+    method: "GET",
+  });
+
+  if (response.ok) {
+    // Print the plaintext string here:
+    const qa_set = await response.text(); // Extract the plaintext content
+    add_qa_set_to_page(filename, qa_set);
+  }
 }
 
 async function post_text2questions(filename, md5_name) {
@@ -119,7 +151,7 @@ async function post_pdf2json(filename, md5_name) {
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
       checkTaskStatus(task_id, (task_id, filename, md5_name) => {
         console.log("pfd2json callback done: " + task_id + " | " + filename);
-        set_file_status(filename, "Generating questions and answers...")
+        set_file_status(filename, "Generating questions and answers...");
         post_text2questions(filename, md5_name);
       });
       // TOOD: Handle the completion response for checkTaskStatus here....

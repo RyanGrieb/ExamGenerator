@@ -20,6 +20,11 @@ li p {
   align-items: center;
 }
 
+
+.qa-set {
+  border: 1px solid red;
+}
+
 .upload-area {
   padding: 4px;
   background-color: #3c4fe05d;
