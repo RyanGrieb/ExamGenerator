@@ -15,7 +15,7 @@ function add_qa_set_to_page(
 ) {
   const qaSetDiv = document.querySelector(".qa-set");
   set_file_status(filename, "Finished.");
-  
+
   document.querySelector(".status-text").innerHTML = "Generated Q&As:";
 
   if (final_generation) {
@@ -76,7 +76,7 @@ async function checkTaskStatus(task_id, callback) {
       );
       clearInterval(interval); // Stop checking on error
     }
-  }, 5000); // Check every 5 seconds (adjust this as needed)
+  }, 2000); // Check every 2 seconds (adjust this as needed)
 }
 
 async function get_json2questions(filename, md5_name) {

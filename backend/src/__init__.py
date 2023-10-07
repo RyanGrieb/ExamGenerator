@@ -268,6 +268,14 @@ async def home():
 
 # FIXME: Move to pdf_processing
 async def async_json2questions(filename, md5_name, task_id):
+    filepath = f'{server.config["QA_FOLDER"]}/{md5_name}.txt'
+
+    # Check if file already exists, if so, set the task status as completed
+    if os.path.isfile(filepath):
+        print(f"Q&A already exists for {filename}, returning...")
+        task_status[task_id] = "completed"
+        return
+
     pdf_text = pdf_processing.json2text(server, md5_name)
     # print("Raw pdf_text: ")
     # print(pdf_text)
@@ -293,7 +301,7 @@ async def async_json2questions(filename, md5_name, task_id):
     if not os.path.exists(server.config["QA_FOLDER"]):
         os.makedirs(server.config["QA_FOLDER"])
 
-    with open(f'{server.config["QA_FOLDER"]}/{md5_name}.txt', "w") as file:
+    with open(filepath, "w") as file:
         file.write(qa_text)
 
     task_status[task_id] = "completed"
@@ -312,7 +320,12 @@ async def async_pdf2json(filename, md5_name, task_id):
 
         file_path = f'{server.config["UPLOAD_FOLDER"]}/{md5_name}.pdf'
 
-        # file_data = {"files": open(file_path, "rb")}
+        # Check if file already exists, if so, set the task status as completed:
+        if os.path.isfile(file_path):
+            print(f"JSON already exists for {filename}, returning...")
+            task_status[task_id] = "completed"
+            return
+
         form_data = aiohttp.FormData()
         form_data.add_field("files", open(file_path, "rb"))
         form_data.add_field("encoding", "utf_8")
@@ -330,7 +343,6 @@ async def async_pdf2json(filename, md5_name, task_id):
                     response_text = await response.text()
                     # TODO: Implement a keep-alive loop & cancel these post requests if terminated.
                     # FIXME: Handle any errors thrown by unstructured api.
-                    # FIXME: Parse the JSON from respose.text and create a semi-formatted text-output from it.
 
                     # Create /pdf-json directory if it doesn't exist.
                     if not os.path.exists(server.config["JSON_FOLDER"]):
