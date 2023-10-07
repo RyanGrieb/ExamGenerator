@@ -1,2 +1,2 @@
-1. Move remaining functions to pdf_processing.py
-2. Make the rest of the code look better. 
+1. 
+2. Do postprocessing on Q&A responses. (e.g. if answer just has A: ..., remove the invalid answer and question)

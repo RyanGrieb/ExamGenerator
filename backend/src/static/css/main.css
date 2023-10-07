@@ -21,7 +21,7 @@ li p {
 }
 
 
-.qa-set {
+.qa-sets {
   border: 1px solid red;
 }
 
@@ -151,6 +151,16 @@ input[type="submit"] {
   animation: typing2 2s steps(40, end);
   animation-delay: 3s;
   animation-fill-mode: forwards;
+}
+
+
+.checkmark-done {
+  display: inline-block;
+  transform: rotate(45deg);
+  height: 24px;
+  width: 12px;
+  border-bottom: 7px solid #78b13f;
+  border-right: 7px solid #78b13f;
 }
 
 /* The typing effect */

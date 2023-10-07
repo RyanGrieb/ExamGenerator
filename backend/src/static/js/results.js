@@ -5,6 +5,16 @@ task_id_md5_name_dict = {};
 function set_file_status(filename, status) {
   p_element = document.querySelector(`#${filename} p`);
   p_element.textContent = status;
+
+  // Remove loading element if status is 'Finshed.'
+  if (status === "Finished.") {
+    loading_element = document.querySelector(`div #${filename}.loader`);
+    loading_element.classList.remove("loader");
+    loading_element.classList.add("checkmark-done");
+
+    qa_set_title = document.querySelector(`p#${filename}.qa-set-title`);
+    qa_set_title.innerHTML = `<b>${filename}</b> - Generated Questions & Answers:`
+  }
 }
 
 function add_qa_set_to_page(
@@ -13,14 +23,10 @@ function add_qa_set_to_page(
   qa_set,
   final_generation = false
 ) {
-  const qaSetDiv = document.querySelector(".qa-set");
+  const qaSetDiv = document.querySelector(`#${filename}.qa-set`);
   set_file_status(filename, "Finished.");
 
   document.querySelector(".status-text").innerHTML = "Generated Q&As:";
-
-  if (final_generation) {
-    document.querySelector(".converting-div").remove();
-  }
 
   // FIXME: JUST PUT A \n before each Q: element. (except the 1st one)
   qa_set.split("\n").forEach((line, index) => {

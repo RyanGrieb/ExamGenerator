@@ -112,15 +112,16 @@ async def home():
     )
 
 
+# Get the Q&A set of the associated file.
 @server.route("/pdf-qa/<md5_name>", methods=["GET"])
 def get_pdf_qa(md5_name):
     with open(f'{server.config["QA_FOLDER"]}/{md5_name}.txt', "r") as file:
         return file.read()
 
 
+# Retrieve the status of a specific task
 @server.route("/task_status/<task_id>", methods=["GET"])
 def get_task_status(task_id):
-    # Retrieve the status of a specific task
     status = task_status.get(task_id, "not_found")
     return jsonify({"status": status})
 
@@ -150,7 +151,6 @@ async def pdf2json():
         return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
 
     except Exception as e:
-        # Handle exceptions or errors here
         print("Error:", str(e), file=sys.stderr)
         return "Error processing the request"
 
@@ -166,6 +166,7 @@ async def json2questions():
         task_id = str(uuid.uuid4())
         task_status[task_id] = "processing"
 
+        # Start the processing task asynchronously
         server.add_background_task(
             pdf_processing.async_json2questions,
             server,
@@ -179,16 +180,15 @@ async def json2questions():
         return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
 
     except Exception as e:
-        # Handle exceptions or errors here
         print("Error:", str(e), file=sys.stderr)
         return "Error processing the request"
-        # Have GPT pre-process these raw chunks
 
 
 @server.route("/results", methods=["GET"])
 async def results():
     file_names = session.get("file_names")
     md5_names = session.get("md5_names")
+
     if file_names is None or md5_names is None:
         return redirect("/")
 
