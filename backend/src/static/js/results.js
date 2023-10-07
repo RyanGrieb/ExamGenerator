@@ -7,8 +7,15 @@ function set_file_status(filename, status) {
   p_element.textContent = status;
 }
 
-function add_qa_set_to_page(filename, qa_set, final_generation = false) {
+function add_qa_set_to_page(
+  filename,
+  md5_name,
+  qa_set,
+  final_generation = false
+) {
   const qaSetDiv = document.querySelector(".qa-set");
+  set_file_status(filename, "Finished.");
+  
   document.querySelector(".status-text").innerHTML = "Generated Q&As:";
 
   if (final_generation) {
@@ -18,10 +25,10 @@ function add_qa_set_to_page(filename, qa_set, final_generation = false) {
   // FIXME: JUST PUT A \n before each Q: element. (except the 1st one)
   qa_set.split("\n").forEach((line, index) => {
     const paragraph = document.createElement("p");
-    
+
     // Add newline space between each Q&A set
     if (index != 0 && index % 2 == 0) {
-      qaSetDiv.appendChild(document.createElement("br"))
+      //qaSetDiv.appendChild(document.createElement("br"))
     }
 
     paragraph.textContent = line;
@@ -72,7 +79,7 @@ async function checkTaskStatus(task_id, callback) {
   }, 5000); // Check every 5 seconds (adjust this as needed)
 }
 
-async function get_text2questions(filename, md5_name) {
+async function get_json2questions(filename, md5_name) {
   // Send a GET request to the server and wait for the response
   console.log("Fetch generated q&a set from server:");
   const formData = new FormData();
@@ -86,11 +93,11 @@ async function get_text2questions(filename, md5_name) {
   if (response.ok) {
     // Print the plaintext string here:
     const qa_set = await response.text(); // Extract the plaintext content
-    add_qa_set_to_page(filename, qa_set);
+    add_qa_set_to_page(filename, md5_name, qa_set);
   }
 }
 
-async function post_text2questions(filename, md5_name) {
+async function post_json2questions(filename, md5_name) {
   try {
     // Create a FormData object to send data with the POST request
     const formData = new FormData();
@@ -98,7 +105,7 @@ async function post_text2questions(filename, md5_name) {
     formData.append("md5_name", md5_name);
 
     // Send a POST request to the server and wait for the response
-    const response = await fetch("/text2questions", {
+    const response = await fetch("/json2questions", {
       method: "POST",
       body: formData,
     });
@@ -113,10 +120,10 @@ async function post_text2questions(filename, md5_name) {
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
       checkTaskStatus(task_id, (task_id, filename, md5_name) => {
         console.log(
-          "Text2Questions callback done: " + task_id + " | " + filename
+          "JSON2Questions callback done: " + task_id + " | " + filename
         );
         // Send a GET request for the questions generated server-side
-        get_text2questions(filename, md5_name);
+        get_json2questions(filename, md5_name);
       });
     } else {
       // Handle network or other errors here
@@ -152,7 +159,7 @@ async function post_pdf2json(filename, md5_name) {
       checkTaskStatus(task_id, (task_id, filename, md5_name) => {
         console.log("pfd2json callback done: " + task_id + " | " + filename);
         set_file_status(filename, "Generating questions and answers...");
-        post_text2questions(filename, md5_name);
+        post_json2questions(filename, md5_name);
       });
       // TOOD: Handle the completion response for checkTaskStatus here....
     } else {

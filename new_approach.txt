@@ -1,0 +1,17 @@
+Instead of doing the rectangle BS. Keep The |tokens| like this, but enumerate with page numbers like you wanted:
+
+===Page:1===
+...|tokens|
+===Page:1===
+
+Then form the chunks based on page number increments. If the text length is too big, just reduce the pages we include by 1.
+USE: https://github.com/openai/tiktoken to count the number of tokens/text length!!!!!!!!!!
+
+After this, just have the prompt: 
+You are an expert in parsing unformatted documents, where text can be out-of-order and confusing. Generate 0 to 5 questions and answers (Q&A), on each page from the provided unformatted text, using this format:
+p_n-Q: ...
+p_n-A: ...
+
+
+
+THEN VALIDATE THE RESPONSE FROM GPT, ensuring it responded in our proper format. If not, re-prompt it.

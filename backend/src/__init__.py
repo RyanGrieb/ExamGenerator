@@ -8,6 +8,7 @@ import aiohttp
 import time
 import uuid
 import re
+from . import pdf_processing
 
 from quart import (
     Quart,
@@ -154,7 +155,7 @@ async def gpt_resize_cutoff_chunks(chunk1, chunk2):
 
 async def gpt_generate_qa(data):
     print(f"Generate Q&A from text chunk: {data}")
-    prompt = f"From the provided data, generate flashcard questions and answers. Skip (dont read and respond to) learning objectives.\nIf you believe there is no valid Q&A to generate, respond with only: 'Q2A: None'.\nIf there is valid data, respond in this format:\nQ: ... \nA: ...\nQ: ... \nA:...\nHere is the provided data:\n{data}"
+    prompt = f"Generate Q&A flashcards each page from the following UNORDERED tokens. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
@@ -165,8 +166,8 @@ async def gpt_generate_qa(data):
         temperature=0,
     )
     response_data: str = response["choices"][0]["message"]["content"]
-    # print("Q&A RESPONSE DATA:")
-    # print(response_data)
+    print("Q&A RESPONSE DATA:")
+    print(response_data)
     if "Q2A: None" in response_data:
         return None
 
@@ -265,108 +266,37 @@ async def home():
     )
 
 
-async def async_text2questions(filename, md5_name, task_id):
-    with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "r") as file:
-        json_data = json.load(file)
+# FIXME: Move to pdf_processing
+async def async_json2questions(filename, md5_name, task_id):
+    pdf_text = pdf_processing.json2text(server, md5_name)
+    # print("Raw pdf_text: ")
+    # print(pdf_text)
+    truncated_pdf_text = pdf_processing.truncate2gpt_tokens(
+        pdf_text, just_split_pages=False
+    )
+    print("Truncated text_list::")
+    print(truncated_pdf_text)
+    print(len(truncated_pdf_text))
+    generated_qa = []
+    for text_chunk in truncated_pdf_text:
+        qa = await gpt_generate_qa(text_chunk)
+        if qa is None:
+            continue
+        generated_qa = generated_qa + qa
 
-        text_chunks: list[str] = []
-        chunk_index = 0
+    qa_text = ""
+    for qa in generated_qa:
+        qa_text += f"{qa}\n"
 
-        for item in json_data:
-            title = None
+    # Save Q&A set to filesystem
+    # Create /pdf-qa directory if it doesn't exist.
+    if not os.path.exists(server.config["QA_FOLDER"]):
+        os.makedirs(server.config["QA_FOLDER"])
 
-            if "text" in item:
-                text = item["text"]
+    with open(f'{server.config["QA_FOLDER"]}/{md5_name}.txt', "w") as file:
+        file.write(qa_text)
 
-                if len(text) < 1:
-                    continue
-
-                if len(text_chunks) <= chunk_index:
-                    text_chunks.append("")
-
-                if title is not None:
-                    text_chunks[chunk_index] += f"|TITLE: {title}|"
-
-                text_chunks[chunk_index] += f"|{text}|"
-
-                if len(text_chunks[chunk_index]) > 1000:
-                    chunk_index += 1
-
-        # Send two chunks to gpt, and have it parse the data between them.
-        print(f"CHUNK SIZE: {len(text_chunks)}")
-        new_text_chunks = []
-        i = 0
-
-        # FIXME: ACCOUNT FOR A SINGLE CHUNK!!!!!
-        # if len(text_chunks) <= 1:
-        #    new_text_chunks.append(text_chunks[0] + " - NEW")
-
-        while i < len(text_chunks) - 1:
-            chunk1 = text_chunks[i]
-            chunk2 = text_chunks[i + 1]
-
-            # If we are re-using the 2nd to last chunk (for odd number of chunks), utilize the updated 2nd to last chunk done previously.
-            processed_chunk1 = None
-            if len(text_chunks) % 2 != 0 and i >= len(text_chunks) - 2:
-                processed_chunk1 = new_text_chunks.pop()
-
-            # 1. Remove page number tokens
-            chunk1 = re.sub(r"\|\d+\|", "", chunk1)
-            chunk2 = re.sub(r"\|\d+\|", "", chunk2)
-            # 2. Remove duplicate tokens (Note how we still use the old chunk1 here, it's important)
-            chunk1, chunk2 = remove_duplicates(chunk1, chunk2)
-
-            # FIXME: REMOVE COPYRIGHT TOKENS!!!!!!!!!!
-
-            # If chunk1 was already processed (happens with odd number of chunks),
-            # set chunk1 to None for step #3, since removing token formatting was already done
-            if processed_chunk1:
-                chunk1 = None
-
-            # 3. Remove tokens & create normal sentences:
-            chunk1, chunk2 = await gpt_remove_token_formatting(chunk1, chunk2)
-
-            # 4. Resize chunks to prevent cut-off information
-            # Set chunk1 to our processed chunk, since it might need to accept cut-off information.
-            if processed_chunk1:
-                chunk1 = processed_chunk1
-
-            chunk1, chunk2 = await gpt_resize_cutoff_chunks(chunk1, chunk2)
-
-            new_text_chunks.append(chunk1)
-            new_text_chunks.append(chunk2)
-
-            # Increment this loop by 2, or if we have odd text_chunks, re-use the 2nd to last chunk at the end.
-            if len(text_chunks) % 2 != 0 and (i + 2) >= len(text_chunks) - 1:
-                i += 1
-            else:
-                i += 2
-
-        print("DONE!!!!! FORMATTED TEXT CHUNKS: ")
-        new_text_chunks = [chunk for chunk in new_text_chunks if chunk != ""]
-        print(new_text_chunks)
-
-        generated_qa = []
-        text_chunks = new_text_chunks
-        for text_chunk in new_text_chunks:
-            qa = await gpt_generate_qa(text_chunk)
-            if qa is None:
-                continue
-            generated_qa = generated_qa + qa
-
-        qa_text = ""
-        for qa in generated_qa:
-            qa_text += f"{qa}\n"
-
-        # Save Q&A set to filesystem
-        # Create /pdf-qa directory if it doesn't exist.
-        if not os.path.exists(server.config["QA_FOLDER"]):
-            os.makedirs(server.config["QA_FOLDER"])
-
-        with open(f'{server.config["QA_FOLDER"]}/{md5_name}.txt', "w") as file:
-            file.write(qa_text)
-
-        task_status[task_id] = "completed"
+    task_status[task_id] = "completed"
 
 
 async def async_pdf2json(filename, md5_name, task_id):
@@ -386,7 +316,7 @@ async def async_pdf2json(filename, md5_name, task_id):
         form_data = aiohttp.FormData()
         form_data.add_field("files", open(file_path, "rb"))
         form_data.add_field("encoding", "utf_8")
-        form_data.add_field("include_page_breaks", "true")
+        form_data.add_field("include_page_breaks", "true")  # FIXME: Not needed?
         form_data.add_field("coordinates", "false")
 
         headers = {"accept": "application/json"}
@@ -460,8 +390,8 @@ async def pdf2json():
         return "Error processing the request"
 
 
-@server.route("/text2questions", methods=["POST"])
-async def text2questions():
+@server.route("/json2questions", methods=["POST"])
+async def json2questions():
     request_form = await request.form
     try:
         filename = request_form.get("filename")
@@ -473,7 +403,7 @@ async def text2questions():
         # Store task status as 'processing'
         task_status[task_id] = "processing"
 
-        server.add_background_task(async_text2questions, filename, md5_name, task_id)
+        server.add_background_task(async_json2questions, filename, md5_name, task_id)
 
         # Return the task ID to the client
         return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
