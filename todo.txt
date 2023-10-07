@@ -1,3 +1,2 @@
-1. When converting, if the file is already processed, just return the pdf-qa file instead of doing a new generation.
-2. Move remaining functions to pdf_processing.py
-3. Make the rest of the code look better. 
+1. Move remaining functions to pdf_processing.py
+2. Make the rest of the code look better. 

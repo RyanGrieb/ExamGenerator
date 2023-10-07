@@ -1,8 +1,11 @@
 import json
 from quart import Quart
-from rect_intersection import intersects
-import matplotlib.pyplot as plt
 import tiktoken
+import sys
+import os
+import aiohttp
+import asyncio
+import openai
 
 
 def main():
@@ -257,6 +260,148 @@ def json2text(server: Quart, md5_name: str):
     formatted_text += f"\n===Page:{current_page}===\n"
 
     return formatted_text
+
+
+async def gpt_generate_qa(data):
+    print(f"Generate Q&A from text chunk: {data}")
+    prompt = f"Generate Q&A flashcards each page from the following UNORDERED tokens. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
+
+    response = await openai.ChatCompletion.acreate(
+        model="gpt-3.5-turbo",
+        messages=[
+            # {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0,
+    )
+    response_data: str = response["choices"][0]["message"]["content"]
+    print("Q&A RESPONSE DATA:")
+    print(response_data)
+    if "Q2A: None" in response_data:
+        return None
+
+    qa_sets = response_data.split("\n")
+    qa_sets = [qa_set for qa_set in qa_sets if qa_set != ""]
+
+    if len(qa_sets) % 2 != 0:
+        print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a)!!!")
+        return qa_sets
+
+    # Remove duplicate Q&A in list (Q & A Must both be the same between duplicate pairs)
+    new_qa_sets = []
+    existing_questions = []
+    existing_answers = []
+
+    for i in range(0, len(qa_sets), 2):
+        question = qa_sets[i]
+        answer = qa_sets[i + 1]
+
+        # We have a duplicate, remove it! (By not appending anything!)
+        if question in existing_questions and answer in existing_answers:
+            continue
+
+        new_qa_sets.append(question)
+        new_qa_sets.append(answer)
+        existing_questions.append(question)
+        existing_answers.append(answer)
+
+    qa_sets = new_qa_sets
+
+    return qa_sets
+
+
+async def async_pdf2json(
+    server: Quart, task_status, filename: str, md5_name: str, task_id: str
+):
+    try:
+        # Check if the variables are received correctly
+        print("Received filename:", filename, file=sys.stderr)
+        print("Received md5_name:", md5_name, file=sys.stderr)
+
+        pdf_file_path = f'{server.config["UPLOAD_FOLDER"]}/{md5_name}.pdf'
+        json_file_path = f'{server.config["JSON_FOLDER"]}/{md5_name}.json'
+
+        # Check if file already exists, if so, set the task status as completed:
+        if os.path.isfile(json_file_path):
+            print(f"JSON already exists for {filename}, returning...")
+            task_status[task_id] = "completed"
+            return
+
+        form_data = aiohttp.FormData()
+        form_data.add_field("files", open(pdf_file_path, "rb"))
+        form_data.add_field("encoding", "utf_8")
+        form_data.add_field("include_page_breaks", "true")  # FIXME: Not needed?
+        form_data.add_field("coordinates", "false")
+
+        headers = {"accept": "application/json"}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                server.config["UNSTRUCTUED_API_URL"], headers=headers, data=form_data
+            ) as response:
+                if response.status == 200:
+                    response_text = await response.text()
+                    # TODO: Implement a keep-alive loop & cancel these post requests if terminated.
+                    # FIXME: Handle any errors thrown by unstructured api.
+
+                    # Create /pdf-json directory if it doesn't exist.
+                    if not os.path.exists(server.config["JSON_FOLDER"]):
+                        os.makedirs(server.config["JSON_FOLDER"])
+
+                    with open(
+                        f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w"
+                    ) as file:
+                        file.write(response_text)
+
+                    task_status[task_id] = "completed"
+                else:
+                    await asyncio.sleep(1)
+                    task_status[task_id] = "error"
+
+    except Exception as e:
+        # Handle exceptions or errors here
+        print("Error:", str(e), file=sys.stderr)
+        task_status[task_id] = "error"
+
+
+async def async_json2questions(
+    server: Quart, task_status, filename: str, md5_name: str, task_id: str
+):
+    qa_filepath = f'{server.config["QA_FOLDER"]}/{md5_name}.txt'
+
+    # Check if file already exists, if so, set the task status as completed
+    if os.path.isfile(qa_filepath):
+        print(f"Q&A already exists for {filename}, returning...")
+        task_status[task_id] = "completed"
+        return
+
+    pdf_text = json2text(server, md5_name)
+    # print("Raw pdf_text: ")
+    # print(pdf_text)
+    truncated_pdf_text = truncate2gpt_tokens(pdf_text, just_split_pages=False)
+    print("Truncated text_list::")
+    print(truncated_pdf_text)
+    print(len(truncated_pdf_text))
+    generated_qa = []
+    for text_chunk in truncated_pdf_text:
+        qa = await gpt_generate_qa(text_chunk)
+        if qa is None:
+            continue
+        generated_qa = generated_qa + qa
+
+    qa_text = ""
+    for qa in generated_qa:
+        qa_text += f"{qa}\n"
+
+    # Save Q&A set to filesystem
+    # Create /pdf-qa directory if it doesn't exist.
+    if not os.path.exists(server.config["QA_FOLDER"]):
+        os.makedirs(server.config["QA_FOLDER"])
+
+    with open(qa_filepath, "w") as file:
+        file.write(qa_text)
+
+    task_status[task_id] = "completed"
 
 
 if __name__ == "__main__":
