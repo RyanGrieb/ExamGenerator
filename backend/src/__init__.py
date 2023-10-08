@@ -33,6 +33,7 @@ server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["QA_FOLDER"] = QA_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 10 * 1000 * 1024  # 10mb
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
+server.jinja_env.globals.update(zip=zip)
 conn = None
 task_status = {}
 
@@ -199,6 +200,7 @@ async def results():
         "results.html",
         file_names=file_names,
         md5_names=md5_names,
+        zip=zip,
         last_updated=dir_last_updated("./src/static"),
     )
 

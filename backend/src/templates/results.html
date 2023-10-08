@@ -3,32 +3,32 @@
 <script type="text/javascript">
     var file_names = []
     var md5_names = []
-    {% for file_name in file_names %}
+    {% for file_name, md5_name in zip(file_names, md5_names) %}
     file_names.push("{{ file_name }}")
-    {% endfor %}
-
-    {% for md5_name in md5_names %}
     md5_names.push("{{ md5_name }}")
     {% endfor %}
+
+    console.log("{{ files }}")
 </script>
 <script src="{{ url_for('static',filename='js/results.js') }}?u={{ last_updated }}"></script>
-{% endblock %} {% block body %}
+{% endblock %}
+{% block body %}
 <div>
     <p class="status-text">Converting the following files, please wait...</p>
     <div class="converting-div">
         <ul class="converted-files-list">
-            {% for file in file_names %}
-            <li id="{{ file }}">
-                <div id="{{ file }}" class="loader"></div>
-                <b>{{ file }}</b> - <p id="{{ file }}">Converting to text...</p>
+            {% for file_name, md5_name in zip(file_names, md5_names) %}
+            <li id="file-list-elm-{{ md5_name }}">
+                <div id="loader-{{ md5_name }}" class="loader"></div>
+                <b>{{ file_name }}</b> - <p id="converting-status-{{ md5_name }}">Converting to text...</p>
             </li>
             {% endfor %}
         </ul>
     </div>
     <div class="qa-sets">
-        {% for file in file_names %}
-        <div id="{{ file }}" class="qa-set">
-            <p id="{{ file }}" class="qa-set-title"><b>{{ file }}</b> - Processing....</p>
+        {% for file_name, md5_name in zip(file_names, md5_names) %}
+        <div id="qa-set-{{ md5_name }}" class="qa-set">
+            <p id="qa-set-title-{{ md5_name }}" class="qa-set-title"><b>{{ file_name }}</b> - Processing....</p>
         </div>
         {% endfor %}
     </div>

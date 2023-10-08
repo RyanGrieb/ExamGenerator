@@ -233,11 +233,33 @@ def json2text(server: Quart, md5_name: str):
 
     with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "r") as file:
         json_data = json.load(file)
+
+        # Do formatting on the following JSON data:
+        # 1. Remove page number tokens (text of just a number)
+        # 2. Remove duplicate tokens (e.g. The copyright footer at the bottom of some slides)
+        # 3. Skip any uncessary json_items (page breaks, empty text)
+        truncated_json_data = []
+        existing_text_tokens = []
         for json_item in json_data:
-            # Skip any page breaks.
-            if json_item["type"] == "PageBreak" or len(json_item["text"]) < 1:
+            # Skip any page breaks, empty text, or duplicate text tokens.
+            if json_item["type"] == "PageBreak":
                 continue
 
+            item_text: str = json_item["text"]
+
+            if len(item_text) < 1:
+                continue
+
+            # FIXME: TEST IF THESE TWO STATEMENTS MESS UP OUR RESPONSES!! (MIGHT REMOVE IMPORTANT DATA??)
+            if item_text in existing_text_tokens:
+                continue
+            if item_text.isnumeric():
+                continue
+
+            truncated_json_data.append(json_item)
+            existing_text_tokens.append(json_item["text"])
+
+        for json_item in truncated_json_data:
             item_page_number = json_item["metadata"]["page_number"]
 
             if item_page_number != current_page:
@@ -264,7 +286,7 @@ def json2text(server: Quart, md5_name: str):
 
 async def gpt_generate_qa(data):
     print(f"Generate Q&A from text chunk: {data}")
-    prompt = f"Generate Q&A flashcards each page from the following UNORDERED tokens. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
+    prompt = f"Generate Q&A flashcards each page from the following UNORDERED tokens. Make sure to properly answer the question generated. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
@@ -332,6 +354,8 @@ async def async_pdf2json(
         form_data.add_field("encoding", "utf_8")
         form_data.add_field("include_page_breaks", "true")  # FIXME: Not needed?
         form_data.add_field("coordinates", "false")
+        # form_data.add_field("strategy", "auto")
+        # form_data.add_field("hi_res_model_name", "detectron2_onnx")
 
         headers = {"accept": "application/json"}
 

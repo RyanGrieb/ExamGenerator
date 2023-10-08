@@ -2,17 +2,17 @@
 task_id_filename_dict = {};
 task_id_md5_name_dict = {};
 
-function set_file_status(filename, status) {
-  p_element = document.querySelector(`#${filename} p`);
+function set_file_status(filename, md5_name, status) {
+  p_element = document.querySelector(`#converting-status-${md5_name}`);
   p_element.textContent = status;
 
   // Remove loading element if status is 'Finshed.'
   if (status === "Finished.") {
-    loading_element = document.querySelector(`div #${filename}.loader`);
+    loading_element = document.querySelector(`#loader-${md5_name}`);
     loading_element.classList.remove("loader");
     loading_element.classList.add("checkmark-done");
 
-    qa_set_title = document.querySelector(`p#${filename}.qa-set-title`);
+    qa_set_title = document.querySelector(`#qa-set-title-${md5_name}`);
     qa_set_title.innerHTML = `<b>${filename}</b> - Generated Questions & Answers:`
   }
 }
@@ -23,8 +23,8 @@ function add_qa_set_to_page(
   qa_set,
   final_generation = false
 ) {
-  const qaSetDiv = document.querySelector(`#${filename}.qa-set`);
-  set_file_status(filename, "Finished.");
+  const qaSetDiv = document.querySelector(`#qa-set-${md5_name}`);
+  set_file_status(filename,md5_name, "Finished.");
 
   document.querySelector(".status-text").innerHTML = "Generated Q&As:";
 
@@ -164,7 +164,7 @@ async function post_pdf2json(filename, md5_name) {
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
       checkTaskStatus(task_id, (task_id, filename, md5_name) => {
         console.log("pfd2json callback done: " + task_id + " | " + filename);
-        set_file_status(filename, "Generating questions and answers...");
+        set_file_status(filename, md5_name, "Generating questions and answers...");
         post_json2questions(filename, md5_name);
       });
       // TOOD: Handle the completion response for checkTaskStatus here....
