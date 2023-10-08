@@ -7,6 +7,7 @@ from . import pdf_processing
 
 from quart import (
     Quart,
+    Request,
     render_template,
     flash,
     request,
@@ -31,9 +32,11 @@ server.config["UNSTRUCTUED_API_URL"] = UNSTRUCTUED_API_URL
 server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["QA_FOLDER"] = QA_FOLDER
-server.config["MAX_CONTENT_LENGTH"] = 10 * 1000 * 1024  # 10mb
+server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
-server.jinja_env.globals.update(zip=zip)
+#server.jinja_env.globals.update(zip=zip)
+# Prevent flask form emptying session variables
+# server.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
 conn = None
 task_status = {}
 
@@ -55,58 +58,56 @@ def allowed_file(filename: str):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+async def upload_file(request: Request):
+    files_dict = await request.files
+    print(files_dict, file=sys.stderr)
+
+    if "file" not in files_dict:
+        flash("No file part")
+        return redirect(request.url)
+
+    files = [file for file in files_dict.getlist("file")]
+
+    # Get a list of files from request.files, should always be 1 file at a time.
+    if len(files) != 1:
+        return jsonify({"success": False})
+
+    file = files[0]
+
+    if not file or not allowed_file(file.filename):
+        return jsonify({"success": False})
+
+    print(
+        "User uploaded pdf: {}".format(file.filename),
+        file=sys.stderr,
+    )
+    # Create /pdf-uploads directory if it doesn't exist.
+    if not os.path.exists(server.config["UPLOAD_FOLDER"]):
+        os.makedirs(server.config["UPLOAD_FOLDER"])
+
+    file_contents = file.stream.read()
+    # Compute the MD5 hash of the contents
+    md5_name = hashlib.md5(file_contents).hexdigest()
+    filename = secure_filename(file.filename).replace(".pdf", "")
+
+    file.filename = f"{md5_name}.pdf"
+
+    # Release the pointer that reads the file so we can save it properly
+    file.stream.seek(0)
+    # FIXME: Check if file already exists, if so dont bother saving it again.
+    await file.save(os.path.join(server.config["UPLOAD_FOLDER"], file.filename))
+
+    return (
+        jsonify({"success": True, "file_name": filename, "md5_name": md5_name}),
+        200,
+        {"ContentType": "application/json"},
+    )
+
+
 @server.route("/", methods=["GET", "POST"])
 async def home():
-    print("homepage")
-
-    # TODO: Have the files upload themselves automatically, and hide/disable the 'convert' button until all files oure uploaded.
-    # Have this file upload progress displayed for the user.
     if request.method == "POST":
-        files_dict = await request.files
-        # check if the post request has the file part
-        if "file" not in files_dict:
-            flash("No file part")
-            return redirect(request.url)
-
-        files = [file for file in files_dict.getlist("file")]
-        # Get a list of files from request.files
-        if len(files) < 1:
-            flash("No selected file")
-            return redirect(request.url)
-
-        file_names = []
-        md5_names = []
-
-        # FIXME: Check if file already exists.
-        for file in files:
-            if file and allowed_file(file.filename):
-                print(
-                    "User uploaded pdf, redirecting.. {}".format(file.filename),
-                    file=sys.stderr,
-                )
-                # Create /pdf-uploads directory if it doesn't exist.
-                if not os.path.exists(server.config["UPLOAD_FOLDER"]):
-                    os.makedirs(server.config["UPLOAD_FOLDER"])
-
-                file_contents = file.stream.read()
-                # Compute the MD5 hash of the contents
-                md5_name = hashlib.md5(file_contents).hexdigest()
-                filename = secure_filename(file.filename).replace(".pdf", "")
-
-                md5_names.append(md5_name)
-                file_names.append(filename)
-                file.filename = f"{md5_name}.pdf"
-
-                # Release the pointer that reads the file so we can save it properly
-                file.stream.seek(0)
-
-                await file.save(
-                    os.path.join(server.config["UPLOAD_FOLDER"], file.filename)
-                )
-
-        session["file_names"] = file_names
-        session["md5_names"] = md5_names
-        return redirect("results")
+        return await upload_file(request)
 
     return await render_template(
         "index.html", last_updated=dir_last_updated("./src/static")
@@ -187,20 +188,8 @@ async def json2questions():
 
 @server.route("/results", methods=["GET"])
 async def results():
-    file_names = session.get("file_names")
-    md5_names = session.get("md5_names")
-
-    if file_names is None or md5_names is None:
-        return redirect("/")
-
-    session.pop("file_names")
-    session.pop("md5_names")
-
     return await render_template(
         "results.html",
-        file_names=file_names,
-        md5_names=md5_names,
-        zip=zip,
         last_updated=dir_last_updated("./src/static"),
     )
 

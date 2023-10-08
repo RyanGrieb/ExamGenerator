@@ -33,12 +33,12 @@ li p {
   border: 3px dashed #8377b9; /* Optional: Add a dashed border for visual style */
 }
 
-.converted-files-list {
+#converting-files-list {
   padding-left: 0;
   list-style-type: none;
 }
 
-.converted-files-list li {
+#converting-files-list li {
   padding: 6px;
 }
 

@@ -1,36 +1,22 @@
 {% extends 'base.html' %}
 {% block head %}
-<script type="text/javascript">
-    var file_names = []
-    var md5_names = []
-    {% for file_name, md5_name in zip(file_names, md5_names) %}
-    file_names.push("{{ file_name }}")
-    md5_names.push("{{ md5_name }}")
-    {% endfor %}
-
-    console.log("{{ files }}")
-</script>
 <script src="{{ url_for('static',filename='js/results.js') }}?u={{ last_updated }}"></script>
+<script>
+    if (Cookies.get("files") === undefined) {
+        window.location.href = "/";
+    }
+</script>
 {% endblock %}
 {% block body %}
 <div>
     <p class="status-text">Converting the following files, please wait...</p>
+
     <div class="converting-div">
-        <ul class="converted-files-list">
-            {% for file_name, md5_name in zip(file_names, md5_names) %}
-            <li id="file-list-elm-{{ md5_name }}">
-                <div id="loader-{{ md5_name }}" class="loader"></div>
-                <b>{{ file_name }}</b> - <p id="converting-status-{{ md5_name }}">Converting to text...</p>
-            </li>
-            {% endfor %}
+        <ul id="converting-files-list">
         </ul>
     </div>
     <div class="qa-sets">
-        {% for file_name, md5_name in zip(file_names, md5_names) %}
-        <div id="qa-set-{{ md5_name }}" class="qa-set">
-            <p id="qa-set-title-{{ md5_name }}" class="qa-set-title"><b>{{ file_name }}</b> - Processing....</p>
-        </div>
-        {% endfor %}
+
     </div>
 </div>
 

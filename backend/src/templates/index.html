@@ -2,31 +2,32 @@
 {% block head %}
 <script src="{{ url_for('static',filename='js/index.js') }}?u={{ last_updated }}"></script>
 <!-- <script src="{{ url_for('static',filename='js/index_fluff.js') }}?u={{ last_updated }}"></script> -->
+<!--<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" /> -->
 {% endblock %} {% block body %}
 <div class="center-horizontally center-inside-elems">
     <h1>PDF to Test Questions</h1>
     <h2>Generate questions and answers from a PDF file.</h2>
 </div>
 <div class="upload-area center-horizontally center-inside-elems">
-    <form method="post" enctype="multipart/form-data">
-
-        <div class="center-inside-elems">
+    <div class="center-inside-elems">
+        <form method="post" enctype="multipart/form-data">
             <label class="button-1" for="file-upload">
                 <i class="fa fa-cloud-upload"></i> Upload Files
             </label>
-            <input id="file-upload" type="file" name="file" accept="application/pdf" multiple></input>
-            <!-- <input type=submit value=Upload> -->
-            <p>Max upload limit is 1MB, Sign up for more</p>
-            <div class="convert-region center-inside-elems">
-                <ul>
-                </ul>
-                <label class="file-convert-btn button-1" for="file-convert" style="display: none;">
-                    <i class="fa fa-cloud-upload"></i> Convert Files
-                </label>
-                <input id="file-convert" , type="submit" value="Upload"></input>
-            </div>
+            <input id="file-upload" type="file" name="file" accept="application/pdf" onchange="upload_file()"
+                multiple></input>
+        </form>
+
+        <!-- <input type=submit value=Upload> -->
+        <p>Max upload limit is 1MB, Sign up for more</p>
+        <div class="convert-region center-inside-elems">
+            <ul>
+            </ul>
+            <button class="file-convert-btn button-1" style="display: none;" onclick="convert_files()">Convert
+                Files</button>
         </div>
-    </form>
+    </div>
 
 
 </div>

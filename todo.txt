@@ -1,5 +1,3 @@
-1. Set element id's to the file-hash name, fixes: 01_-_Introduction_to_Web_Development
-2. Post-process Q&A sets, (e.g. replace [NEWLINE] with \n)
+1. Fix bug where convert button appears if we upload another file while others are still processing.
 2. Drag and drop upload
-3. Have files upload asynchronously in the background instead of what we got currently.
-4. Do postprocessing on Q&A responses. (e.g. if answer just has A: ..., remove the invalid answer and question)
+3. Post-process Q&A sets, (e.g. replace [NEWLINE] with \n) - Do postprocessing on Q&A responses. (e.g. if answer just has A: ..., remove the invalid answer and question)

@@ -13,7 +13,7 @@ function set_file_status(filename, md5_name, status) {
     loading_element.classList.add("checkmark-done");
 
     qa_set_title = document.querySelector(`#qa-set-title-${md5_name}`);
-    qa_set_title.innerHTML = `<b>${filename}</b> - Generated Questions & Answers:`
+    qa_set_title.innerHTML = `<b>${filename}</b> - Generated Questions & Answers:`;
   }
 }
 
@@ -24,7 +24,7 @@ function add_qa_set_to_page(
   final_generation = false
 ) {
   const qaSetDiv = document.querySelector(`#qa-set-${md5_name}`);
-  set_file_status(filename,md5_name, "Finished.");
+  set_file_status(filename, md5_name, "Finished.");
 
   document.querySelector(".status-text").innerHTML = "Generated Q&As:";
 
@@ -164,7 +164,11 @@ async function post_pdf2json(filename, md5_name) {
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
       checkTaskStatus(task_id, (task_id, filename, md5_name) => {
         console.log("pfd2json callback done: " + task_id + " | " + filename);
-        set_file_status(filename, md5_name, "Generating questions and answers...");
+        set_file_status(
+          filename,
+          md5_name,
+          "Generating questions and answers..."
+        );
         post_json2questions(filename, md5_name);
       });
       // TOOD: Handle the completion response for checkTaskStatus here....
@@ -179,9 +183,88 @@ async function post_pdf2json(filename, md5_name) {
 }
 
 window.addEventListener("load", () => {
+  files_cookie = Cookies.get("files");
+  Cookies.remove("files");
+
+  const files = JSON.parse(files_cookie);
+
+  console.log(files);
+
+  var file_names = [];
+  var md5_names = [];
+
+  for (const file_json of files) {
+    file_names.push(file_json["file_name"]);
+    md5_names.push(file_json["md5_name"]);
+  }
+
   // Test output to see if our variables got initalized (they usually are)
   console.log(file_names);
   console.log(md5_names);
+
+  // Populate HTML with the associated files
+
+  for (let i = 0; i < file_names.length; i++) {
+    const filename = file_names[i];
+    const md5_name = md5_names[i];
+
+    // ============== Create converting-files-list (li) elements ==============
+    const converting_files_list = document.getElementById(
+      "converting-files-list"
+    );
+
+    const file_list_elem = document.createElement("li");
+    file_list_elem.id = `file-list-elm-${md5_name}`;
+
+    // Create the loader div, b, p elements
+    const div = document.createElement("div");
+    div.id = `loader-${md5_name}`;
+    div.className = "loader";
+
+    const b = document.createElement("b");
+    b.textContent = filename;
+
+    const p = document.createElement("p");
+    p.id = `converting-status-${md5_name}`;
+    p.textContent = "Converting to text...";
+
+    // Append the elements to file_list_elem
+    file_list_elem.appendChild(div);
+    file_list_elem.appendChild(b);
+    file_list_elem.appendChild(document.createTextNode(" - "));
+    file_list_elem.appendChild(p);
+
+    converting_files_list.appendChild(file_list_elem);
+
+    // ============== Create qa-set elements (div) ==============
+    const qaSetsDiv = document.querySelector(".qa-sets");
+
+    // Create the qa-set div
+    const qaSetDiv = document.createElement("div");
+    qaSetDiv.id = `qa-set-${md5_name}`;
+    qaSetDiv.className = "qa-set";
+
+    // Create the qa-set-title paragraph
+    const qaSetTitleParagraph = document.createElement("p");
+    qaSetTitleParagraph.id = `qa-set-title-${md5_name}`;
+    qaSetTitleParagraph.className = "qa-set-title";
+
+    // Create the b element
+    const bElement = document.createElement("b");
+    bElement.textContent = filename;
+
+    // Set the text content of the paragraph
+    qaSetTitleParagraph.appendChild(bElement);
+    qaSetTitleParagraph.appendChild(
+      document.createTextNode(" - Processing....")
+    );
+
+    // Append the paragraph to the qa-set div
+    qaSetDiv.appendChild(qaSetTitleParagraph);
+
+    // Append the qa-set div to the qa-sets div
+    qaSetsDiv.appendChild(qaSetDiv);
+  }
 
   // Iterate through all files string array, send a post request to our server at /pdf-to-text
   // Include the filename & md5_name of the file

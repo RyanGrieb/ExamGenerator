@@ -4,6 +4,7 @@ mysql-connector==2.2.9
 requests==2.31.0
 openai==0.28.0
 aiohttp==3.8.5
-matplotlib==3.8.0
 rect-intersection==0.10
 tiktoken==0.5.1
+quart-cors==0.7.0
+quart-session==2.0.0
