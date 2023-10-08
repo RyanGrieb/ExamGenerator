@@ -1,4 +1,5 @@
-Cookies.remove("files")
+Cookies.remove("files");
+let totalFilesUploaded = 0;
 
 // Format our filename such that it's able to be put inside HTML tags.
 function get_formatted_file_name(fileName) {
@@ -9,7 +10,6 @@ function upload_file() {
   const fileList = document.querySelector(".convert-region ul");
   const fileInput = document.getElementById("file-upload");
   const convertButton = document.querySelector(".file-convert-btn");
-  let filesUploaded = 0;
 
   // Hide the convert button again, since were waiting on documents to upload:
   convertButton.style.display = "none";
@@ -33,7 +33,7 @@ function upload_file() {
 
     // Create and append our file to the XMLHttpRequest.
     const request = new XMLHttpRequest();
-    request.responseType = "json"
+    request.responseType = "json";
     formdata.append("file", file);
 
     request.upload.addEventListener("progress", (event) => {
@@ -49,34 +49,33 @@ function upload_file() {
 
     request.addEventListener("readystatechange", function () {
       if (this.readyState === this.DONE) {
-
         const response_file_name = this.response["file_name"];
         const response_md5_name = this.response["md5_name"];
         fileNameLi.textContent = `${fileName} - 100%`;
 
         // Create an object to store your data
-        console.log(response_file_name)
+        console.log(response_file_name);
         const file_json = {
           file_name: response_file_name,
           md5_name: response_md5_name,
         };
 
-
-        const files_cookie = Cookies.get("files")
-        if(files_cookie === undefined){
-          Cookies.set("files", JSON.stringify([file_json]))
-        }else{
+        const files_cookie = Cookies.get("files");
+        if (files_cookie === undefined) {
+          Cookies.set("files", JSON.stringify([file_json]));
+        } else {
           // get list from 'files' cookie
-          const files = JSON.parse(files_cookie)
-          files.push(file_json)
-          Cookies.set("files", JSON.stringify(files))
+          const files = JSON.parse(files_cookie);
+          files.push(file_json);
+          Cookies.set("files", JSON.stringify(files));
           //console.log("NEW COOKIES:")
           //console.log(Cookies.get("files"))
         }
 
+        totalFilesUploaded++;
+        console.log(`${totalFilesUploaded} - ${fileList.getElementsByTagName("li").length}`)
         // Make the convert button visible, once all files are loaded.
-        filesUploaded++;
-        if (filesUploaded >= fileInput.files.length) {
+        if (totalFilesUploaded >= fileList.getElementsByTagName("li").length) {
           convertButton.removeAttribute("style");
         }
       }
@@ -89,6 +88,6 @@ function upload_file() {
 }
 
 function convert_files() {
-  console.log("?????????????")
+  console.log("?????????????");
   window.location.href = "/results";
 }
