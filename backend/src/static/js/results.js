@@ -37,13 +37,35 @@ function add_qa_set_to_page(
       //qaSetDiv.appendChild(document.createElement("br"))
     }
 
-    paragraph.textContent = line;
+    paragraph.innerHTML = line;
     qaSetDiv.appendChild(paragraph);
   });
 }
 
+// Make our q&a set look prettier. Remove any empty answers, and format [NEWLINE] strings with an actual \n.
+// Number our q&a set too.
 function post_process_qa_set(qa_set) {
-  qa_set = qa_set.replaceAll("[NEWLINE]","\n")
+  qa_set = qa_set.replaceAll("[NEWLINE]", "\n");
+  // Split the input string into lines
+  const lines = qa_set.trim().split("\n");
+
+  // Create a new string with numbers before each Q&A set
+  let modifiedString = "";
+  let questionNumber = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith("Q:")) {
+      // Add the question with the number to the modified string
+      questionNumber++;
+      modifiedString += `<br><b>${questionNumber}.</b> ${lines[i].trim()}\n`;
+    } else {
+      // Add answers without modification
+      modifiedString += `${lines[i].trim()}\n`;
+    }
+  }
+  qa_set = modifiedString;
+  console.log(qa_set);
+
+  // Output the modified string
   return qa_set;
 }
 

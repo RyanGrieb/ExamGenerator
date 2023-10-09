@@ -23,6 +23,7 @@ li p {
 
 .qa-sets {
   border: 1px solid red;
+  padding-left: 5px;
 }
 
 .upload-area {
