@@ -42,6 +42,11 @@ function add_qa_set_to_page(
   });
 }
 
+function post_process_qa_set(qa_set) {
+  qa_set = qa_set.replaceAll("[NEWLINE]","\n")
+  return qa_set;
+}
+
 // Function to periodically check task status
 async function checkTaskStatus(task_id, callback) {
   // Define your logic to check task status here
@@ -98,7 +103,8 @@ async function get_json2questions(filename, md5_name) {
 
   if (response.ok) {
     // Print the plaintext string here:
-    const qa_set = await response.text(); // Extract the plaintext content
+    let qa_set = await response.text(); // Extract the plaintext content
+    qa_set = post_process_qa_set(qa_set);
     add_qa_set_to_page(filename, md5_name, qa_set);
   }
 }

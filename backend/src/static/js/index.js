@@ -61,7 +61,6 @@ function upload_file() {
         fileNameLi.textContent = `${fileName} - 100%`;
 
         // Create an object to store your data
-        console.log(response_file_name);
         const file_json = {
           file_name: response_file_name,
           md5_name: response_md5_name,
@@ -80,7 +79,7 @@ function upload_file() {
         }
 
         totalFilesUploaded++;
-        console.log(`${totalFilesUploaded} - ${fileList.getElementsByTagName("li").length}`)
+        //console.log(`${totalFilesUploaded} - ${fileList.getElementsByTagName("li").length}`)
         // Make the convert button visible, once all files are loaded.
         if (totalFilesUploaded >= fileList.getElementsByTagName("li").length) {
           convertButton.removeAttribute("style");
@@ -95,6 +94,5 @@ function upload_file() {
 }
 
 function convert_files() {
-  console.log("?????????????");
   window.location.href = "/results";
 }

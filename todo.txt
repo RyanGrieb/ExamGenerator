@@ -1,6 +1,5 @@
 1. Figure out how to get unstructured.io to read images into text - quickly...
-2. Handle duplicate uploads (PREVENT THEM!!!)
-3. Drag and drop upload
-4. Post-process Q&A sets, (e.g. replace [NEWLINE] with \n) - Do postprocessing on Q&A responses. (e.g. if answer just has A: ..., remove the invalid answer and question)
-5. CSS padding different in production server?
-6. Number the questions (Q&A) generated (frontend).
+2. Drag and drop upload
+3. Post-process Q&A sets, (e.g. replace [NEWLINE] with \n) - Do postprocessing on Q&A responses. (e.g. if answer just has A: ..., remove the invalid answer and question)
+4. CSS padding different in production server?
+5. Number the questions (Q&A) generated (frontend).
