@@ -1,4 +1,3 @@
 1. Figure out how to get unstructured.io to read images into text - quickly...
 2. Drag and drop upload
 4. CSS padding different in production server?
-5. Number the questions (Q&A) generated (frontend).
