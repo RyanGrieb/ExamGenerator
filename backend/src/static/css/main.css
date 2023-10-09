@@ -42,6 +42,10 @@ li p {
   padding: 6px;
 }
 
+#converting-files-list li b {
+  padding-left: 6px;
+}
+
 input[type="file"] {
   display: none;
 }

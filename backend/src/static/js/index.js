@@ -17,13 +17,20 @@ function upload_file() {
   console.log("Uploading file...");
 
   // Iterate through all selected files and append them to FormData
-  for (let i = 0; i < fileInput.files.length; i++) {
+  filesLoop: for (let i = 0; i < fileInput.files.length; i++) {
     // Initalize our variables associated with the current file
     const formdata = new FormData();
     const file = fileInput.files[i];
     const fileName = file.name;
     const fileSize = file.size;
     const formattedFileName = get_formatted_file_name(fileName);
+
+    // Check if file already exists, if so skip over it.
+    for(const liElem of fileList.getElementsByTagName("li")){
+      if(liElem.textContent.includes(formattedFileName)){
+        continue filesLoop;
+      }
+    }
 
     // Create an li element for each file
     const fileNameLi = document.createElement("li");
