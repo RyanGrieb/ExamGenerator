@@ -114,6 +114,11 @@ async def home():
     )
 
 
+@server.errorhandler(404)
+async def page_not_found(e):
+    return redirect("/")
+
+
 @server.route("/help", methods=["GET"])
 async def help():
     return await render_template(

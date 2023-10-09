@@ -12,6 +12,20 @@ function highlight_navbar() {
     }
 }
 
+function add_to_list_cookie(cookie_name, list_object){
+    const files_cookie = Cookies.get(cookie_name);
+    if (files_cookie === undefined) {
+      Cookies.set(cookie_name, JSON.stringify([list_object]));
+    } else {
+      // get list from 'files' cookie, and append to it.
+      const files = JSON.parse(files_cookie);
+      files.push(list_object);
+      Cookies.set(cookie_name, JSON.stringify(files));
+      //console.log("NEW COOKIES:")
+      //console.log(Cookies.get("files"))
+    }
+}
+
 window.addEventListener("load", () => {
     highlight_navbar();
 });

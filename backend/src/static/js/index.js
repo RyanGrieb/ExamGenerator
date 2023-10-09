@@ -84,18 +84,7 @@ function upload_file(file) {
         file_name: response_file_name,
         md5_name: response_md5_name,
       };
-
-      const files_cookie = Cookies.get("files");
-      if (files_cookie === undefined) {
-        Cookies.set("files", JSON.stringify([file_json]));
-      } else {
-        // get list from 'files' cookie
-        const files = JSON.parse(files_cookie);
-        files.push(file_json);
-        Cookies.set("files", JSON.stringify(files));
-        //console.log("NEW COOKIES:")
-        //console.log(Cookies.get("files"))
-      }
+      add_to_list_cookie("files", file_json)
 
       totalFilesUploaded++;
       //console.log(`${totalFilesUploaded} - ${fileList.getElementsByTagName("li").length}`)

@@ -45,6 +45,8 @@ function add_qa_set_to_page(
 // Make our q&a set look prettier. Remove any empty answers, and format [NEWLINE] strings with an actual \n.
 // Number our q&a set too.
 function post_process_qa_set(qa_set) {
+
+  // Sometimes, we get [NEWLINE] in our qa_set, we just want \n.
   qa_set = qa_set.replaceAll("[NEWLINE]", "\n");
   // Split the input string into lines
   const lines = qa_set.trim().split("\n");
