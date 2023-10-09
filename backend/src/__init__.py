@@ -34,7 +34,7 @@ server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["QA_FOLDER"] = QA_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
-#server.jinja_env.globals.update(zip=zip)
+# server.jinja_env.globals.update(zip=zip)
 # Prevent flask form emptying session variables
 # server.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
 conn = None
@@ -111,6 +111,13 @@ async def home():
 
     return await render_template(
         "index.html", last_updated=dir_last_updated("./src/static")
+    )
+
+
+@server.route("/help", methods=["GET"])
+async def help():
+    return await render_template(
+        "help.html", last_updated=dir_last_updated("./src/static")
     )
 
 

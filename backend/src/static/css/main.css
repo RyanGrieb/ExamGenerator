@@ -8,6 +8,56 @@ li p {
   display: inline;
 }
 
+nav {
+  display: flex;
+  justify-content: space-between; /* To evenly distribute the items horizontally */
+  background-color: rgba(112, 24, 255, 0.116);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  display: flex; /* Make the <ul> a flex container */
+}
+
+nav li {
+  margin-right: 20px;
+}
+
+nav a {
+  text-decoration: none;
+  color: rgb(22, 22, 58);
+}
+
+/* Add hover effect for links */
+nav a:hover {
+  text-decoration: underline;
+}
+
+#toc-container {
+  margin-top: 10px;
+  background: #f9f9f9 none repeat scroll 0 0;
+  border: 1px solid #aaa;
+  display: table;
+  font-size: 95%;
+  margin-bottom: 1em;
+  padding: 20px;
+  width: auto;
+}
+
+#toc-container li, #toc-container ul, #toc-container ul li{
+  list-style: outside none none !important;
+  padding: 0;
+}
+
+.toc-title {
+  font-weight: 700;
+  text-align: center;
+}
+
 .center-horizontally {
   margin: auto;
   width: 50%;
@@ -19,7 +69,6 @@ li p {
   justify-content: center;
   align-items: center;
 }
-
 
 .qa-sets {
   border: 1px solid red;
@@ -157,7 +206,6 @@ input[type="submit"] {
   animation-delay: 3s;
   animation-fill-mode: forwards;
 }
-
 
 .checkmark-done {
   display: inline-block;
