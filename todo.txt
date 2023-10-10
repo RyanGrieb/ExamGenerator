@@ -1,5 +1,9 @@
+0. Bio ch8 slides - oxidation & reduction should have been included in Q&A set.
 0. Expandable/Closeable <div> for each generated PDF & it's Q&A set.
 1. Store previously generated PDFs in a cookie, give user ability to view them.
 2. Export option after Q&A generation.
 3. CSS/HTML Indication when user hovers file over the upload area.
+4. User accounts/registration - Google, Github, ect.
+5. Stop running task if the user doesn't send GET request checking on it after 5-10 seconds.
+6. Delete option to allow user to remove any unwanted Q&A sets.
 *. Figure out how to get unstructured.io to read images into text - quickly...

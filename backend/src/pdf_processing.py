@@ -220,7 +220,11 @@ def merge_pdf_json_elements(elements):
     # List of all elements with an expanded bounding box.
     formatted_text = ""
     for element in elements:
-        formatted_text += f'{element["text"]} '
+        text = element["text"]
+        if text[0].isupper():
+            formatted_text += f"\n{text}"
+        else:
+            formatted_text += f"{text} "
 
     return formatted_text.rstrip()
 
@@ -286,7 +290,7 @@ def json2text(server: Quart, md5_name: str):
 
 async def gpt_generate_qa(data):
     print(f"Generate Q&A from text chunk: {data}")
-    prompt = f"Generate Q&A flashcards each page from the following UNORDERED tokens. Make sure to properly answer the question generated. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
+    prompt = f"Generate clever Q&A flashcards each page from the following UNORDERED tokens. Make sure to cleverly answer the question generated. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
