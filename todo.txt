@@ -9,3 +9,8 @@
 6. Delete option to allow user to remove any unwanted Q&A sets.
 7. In database, map IP address to every uploaded PDF file.
 *. Figure out how to get unstructured.io to read images into text - quickly...
+
+
+Tests:
+1. Test if we get the # (number) of page number tokens correct for specific PDF files: Ensures we parse out page number tokens properly.
+2. 

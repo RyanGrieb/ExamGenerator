@@ -62,6 +62,10 @@ nav a:hover {
   text-align: center;
 }
 
+.center-text {
+  text-align: center;
+}
+
 .center-horizontally {
   margin: auto;
   width: 50%;
@@ -74,15 +78,17 @@ nav a:hover {
   align-items: center;
 }
 
-.qa-sets {
-  border: 1px solid #8377b9;
-  padding-left: 5px;
+.qa-set {
+  border: 3px solid #8377b9;
+  padding: 10px;
+  margin-bottom: 6px;
 }
 
 .upload-area {
   padding: 4px;
   background-color: #3c4fe05d;
-  width: 650px; /* Set your desired width */
+  max-width: 650px; /* Set your desired width */
+  min-width: 310px;
   min-height: 250px;
   border: 3px dashed #8377b9; /* Optional: Add a dashed border for visual style */
 }
