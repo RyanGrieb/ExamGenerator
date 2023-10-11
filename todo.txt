@@ -1,3 +1,4 @@
+0. Implement debug log for each PDF file processed, give testers ability to view logs on the website.
 0. Bio ch8 slides - oxidation & reduction should have been included in Q&A set.
 0. Expandable/Closeable <div> for each generated PDF & it's Q&A set.
 1. Store previously generated PDFs in a cookie, give user ability to view them.
@@ -6,4 +7,5 @@
 4. User accounts/registration - Google, Github, ect.
 5. Stop running task if the user doesn't send GET request checking on it after 5-10 seconds.
 6. Delete option to allow user to remove any unwanted Q&A sets.
+7. In database, map IP address to every uploaded PDF file.
 *. Figure out how to get unstructured.io to read images into text - quickly...

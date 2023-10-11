@@ -222,7 +222,7 @@ def merge_pdf_json_elements(elements):
     for element in elements:
         text = element["text"]
         if text[0].isupper():
-            formatted_text += f"\n{text}"
+            formatted_text += f"\n{text}"  # FIXME: Dont add newline if this is our first element on the page!
         else:
             formatted_text += f"{text} "
 
@@ -231,17 +231,10 @@ def merge_pdf_json_elements(elements):
 
 # Parses the json file & creates a formatted .txt file of the PDF for ChatGPT to read.
 def json2text(server: Quart, md5_name: str):
-    formatted_text = ""
-    current_page = 0
-    page_elements = []
-
     with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "r") as file:
         json_data = json.load(file)
 
-        # Do formatting on the following JSON data:
-        # 1. Remove page number tokens (text of just a number)
-        # 2. Remove duplicate tokens (e.g. The copyright footer at the bottom of some slides)
-        # 3. Skip any uncessary json_items (page breaks, empty text)
+        # 1. Skip any uncessary json_items (page breaks, empty text, duplicate tokens)
         truncated_json_data = []
         existing_text_tokens = []
         for json_item in json_data:
@@ -254,15 +247,66 @@ def json2text(server: Quart, md5_name: str):
             if len(item_text) < 1:
                 continue
 
-            # FIXME: TEST IF THESE TWO STATEMENTS MESS UP OUR RESPONSES!! (MIGHT REMOVE IMPORTANT DATA??)
+            # FIXME: TEST IF THIS STATEMENT MESS UP OUR RESPONSES!! (MIGHT REMOVE IMPORTANT DATA??)
             if item_text in existing_text_tokens:
-                continue
-            if item_text.isnumeric():
                 continue
 
             truncated_json_data.append(json_item)
             existing_text_tokens.append(json_item["text"])
 
+        # 2.  Remove page numbers from our data (But not the other important ones!)
+        # List of json_items that are numbers. We check theses lists against each other & remove page numbers
+        prev_numbers_on_page = []
+        numbers_on_page = []
+
+        # List of all json_items that we suspect are page numbers
+        page_number_json_items = []
+        current_page = 0
+        for index, json_item in enumerate(truncated_json_data):
+            item_page_number = json_item["metadata"]["page_number"]
+            item_text = json_item["text"]
+
+            # Ensure we check the last json_item number before going into that if-conditon below
+            if index == len(truncated_json_data) - 1 and item_text.isdigit():
+                numbers_on_page.append(json_item)
+
+            if (
+                item_page_number != current_page
+                or index == len(truncated_json_data) - 1
+            ):
+                current_page = item_page_number
+
+                # Compare prev_numbers_on_page w/ numbers_on_page, if we see a +1 increment b/w them, append both to page_number_json_items
+                for prev_json_digit_item in prev_numbers_on_page:
+                    for json_digit_item in numbers_on_page:
+                        if int(json_digit_item["text"]) - 1 == int(
+                            prev_json_digit_item["text"]
+                        ):
+                            if prev_json_digit_item not in page_number_json_items:
+                                page_number_json_items.append(prev_json_digit_item)
+                            if json_digit_item not in page_number_json_items:
+                                page_number_json_items.append(json_digit_item)
+
+                prev_numbers_on_page = list(numbers_on_page)
+                numbers_on_page.clear()
+
+            # Add any digits found to numbers_on_page
+            if item_text.isdigit():
+                numbers_on_page.append(json_item)
+
+        print(f"Page number elements to be removed: {len(page_number_json_items)}")
+        # print(f"Length of BEFORE json_data: {len(truncated_json_data)}")
+        truncated_json_data = [
+            json_item
+            for json_item in truncated_json_data
+            if json_item not in page_number_json_items
+        ]
+        # print(f"Length of AFTER json_data: ${len(truncated_json_data)}")
+
+        # 3.  Generate formatted text from our pre-processed json-elements
+        formatted_text = ""
+        current_page = 0
+        page_elements = []
         for json_item in truncated_json_data:
             item_page_number = json_item["metadata"]["page_number"]
 
