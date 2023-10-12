@@ -6,6 +6,8 @@ import os
 import aiohttp
 import asyncio
 import openai
+import logging
+import traceback
 
 
 def main():
@@ -170,8 +172,41 @@ def main():
     print(text_list)
 
 
+def get_logger_for_file(server: Quart, md5_name: str) -> logging.Logger:
+    if not os.path.exists(server.config["LOG_FOLDER"]):
+        os.makedirs(server.config["LOG_FOLDER"])
+
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
+
+    logger_file = logging.FileHandler(f'{server.config["LOG_FOLDER"]}/{md5_name}.txt')
+    logger_file.setLevel(logging.DEBUG)
+    logger_file.setFormatter(formatter)
+
+    logger = logging.getLogger(f"pdf-logs")
+    new_logger = False
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    else:
+        new_logger = True
+
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logger_file)
+
+    if new_logger:
+        logger.info(
+            "================================= BEGINNING OF LOGGING SESSION ================================="
+        )
+
+    return logger
+
+
 # Given a pdf_text string (Has the formatted page numbers), return a list of text under the 4096 token limit for chat-gpt
-def truncate2gpt_tokens(pdf_text: str, just_split_pages=False):
+def truncate2gpt_tokens(
+    server: Quart, md5_name: str, pdf_text: str, just_split_pages=False
+):
+    logger: logging.Logger = get_logger_for_file(server, md5_name)
+    logger.info("Function: truncate2gpt_tokens")
+
     # Split the input string into sections based on "===page:" pattern
     sections = pdf_text.split("===Page:")
     current_page = -1
@@ -190,8 +225,9 @@ def truncate2gpt_tokens(pdf_text: str, just_split_pages=False):
 
         page_sections[-1] += section
 
-    # print("PAGE SECTIONS:")
-    # print(page_sections)
+    logger.debug(f"Page sections w/ length of: {len(page_sections)}")
+    logger.debug(page_sections)
+
     if just_split_pages:
         return page_sections
 
@@ -211,7 +247,7 @@ def truncate2gpt_tokens(pdf_text: str, just_split_pages=False):
         truncated_pdf_text[-1] += section
         current_tokens += num_tokens
 
-    # print(f"Used tokens: {current_tokens}")
+    logger.debug(f"Number of tokens used for pdf text: {current_tokens}")
     return truncated_pdf_text
 
 
@@ -231,6 +267,9 @@ def merge_pdf_json_elements(elements):
 
 # Parses the json file & creates a formatted .txt file of the PDF for ChatGPT to read.
 def json2text(server: Quart, md5_name: str):
+    logger: logging.Logger = get_logger_for_file(server, md5_name)
+    logger.info("Function: json2text")
+
     with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "r") as file:
         json_data = json.load(file)
 
@@ -294,14 +333,20 @@ def json2text(server: Quart, md5_name: str):
             if item_text.isdigit():
                 numbers_on_page.append(json_item)
 
-        print(f"Page number elements to be removed: {len(page_number_json_items)}")
-        # print(f"Length of BEFORE json_data: {len(truncated_json_data)}")
+        logger.debug(
+            f"Page number elements found (and to remove): {len(page_number_json_items)}"
+        )
+        logger.debug(
+            f"Removing page #'s: Length of BEFORE json_data: {len(truncated_json_data)}"
+        )
         truncated_json_data = [
             json_item
             for json_item in truncated_json_data
             if json_item not in page_number_json_items
         ]
-        # print(f"Length of AFTER json_data: ${len(truncated_json_data)}")
+        logger.debug(
+            f"Removing page #'s:  Length of AFTER json_data: {len(truncated_json_data)}"
+        )
 
         # 3.  Generate formatted text from our pre-processed json-elements
         formatted_text = ""
@@ -332,8 +377,13 @@ def json2text(server: Quart, md5_name: str):
     return formatted_text
 
 
-async def gpt_generate_qa(data):
+async def gpt_generate_qa(server, md5_name, data):
+    logger: logging.Logger = get_logger_for_file(server, md5_name)
+    logger.info("Function: gpt_generate_qa")
+
     print(f"Generate Q&A from text chunk: {data}")
+    logger.debug(f"Generate Q&A from text chunk: {data}")
+
     prompt = f"Generate clever Q&A flashcards each page from the following UNORDERED tokens. Make sure to cleverly answer the question generated. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
@@ -345,8 +395,12 @@ async def gpt_generate_qa(data):
         temperature=0,
     )
     response_data: str = response["choices"][0]["message"]["content"]
-    print("Q&A RESPONSE DATA:")
+    print("GPT Q&A RESPONSE DATA:")
+    logger.debug("GPT Q&A RESPONSE DATA:")
+
     print(response_data)
+    logger.debug(response_data)
+
     if "Q2A: None" in response_data:
         return None
 
@@ -355,6 +409,7 @@ async def gpt_generate_qa(data):
 
     if len(qa_sets) % 2 != 0:
         print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a)!!!")
+        logger.warn("UNEVEN Q&A RESPONSE (mssing q or a)!!")
         return qa_sets
 
     # Remove duplicate Q&A in list (Q & A Must both be the same between duplicate pairs)
@@ -381,19 +436,27 @@ async def gpt_generate_qa(data):
 
 
 async def async_pdf2json(
-    server: Quart, task_status, filename: str, md5_name: str, task_id: str
+    server: Quart,
+    task_status,
+    filename: str,
+    md5_name: str,
+    task_id: str,
+    ip_address: str,
 ):
+    logger: logging.Logger = get_logger_for_file(server, md5_name)
     try:
         # Check if the variables are received correctly
-        print("Received filename:", filename, file=sys.stderr)
-        print("Received md5_name:", md5_name, file=sys.stderr)
+        logger.info("Function: async_pdf2json")
+        logger.debug(f"Uploader: {ip_address}")
+        logger.debug(f"Received filename: {filename}")
+        logger.debug(f"Received md5_name: {md5_name}")
 
         pdf_file_path = f'{server.config["UPLOAD_FOLDER"]}/{md5_name}.pdf'
         json_file_path = f'{server.config["JSON_FOLDER"]}/{md5_name}.json'
 
         # Check if file already exists, if so, set the task status as completed:
         if os.path.isfile(json_file_path):
-            print(f"JSON already exists for {filename}, returning...")
+            logger.debug(f"JSON already exists for {filename}, returning...")
             task_status[task_id] = "completed"
             return
 
@@ -433,30 +496,39 @@ async def async_pdf2json(
     except Exception as e:
         # Handle exceptions or errors here
         print("Error:", str(e), file=sys.stderr)
+        logger.error(str(e))
+        logger.error(traceback.format_exc())
         task_status[task_id] = "error"
 
 
 async def async_json2questions(
     server: Quart, task_status, filename: str, md5_name: str, task_id: str
 ):
+    logger: logging.Logger = get_logger_for_file(server, md5_name)
+    logger.info("Function: async_json2questions")
+
     qa_filepath = f'{server.config["QA_FOLDER"]}/{md5_name}.txt'
 
     # Check if file already exists, if so, set the task status as completed
     if os.path.isfile(qa_filepath):
-        print(f"Q&A already exists for {filename}, returning...")
+        logger.debug(f"Q&A already exists for {filename}, returning...")
         task_status[task_id] = "completed"
         return
 
     pdf_text = json2text(server, md5_name)
-    # print("Raw pdf_text: ")
-    # print(pdf_text)
-    truncated_pdf_text = truncate2gpt_tokens(pdf_text, just_split_pages=False)
-    print("Truncated text_list::")
-    print(truncated_pdf_text)
-    print(len(truncated_pdf_text))
+
+    logger.debug("JSON text (converted from JSON): ")
+    logger.debug(pdf_text)
+
+    truncated_pdf_text = truncate2gpt_tokens(
+        server, md5_name, pdf_text, just_split_pages=False
+    )
+    logger.debug("Truncated text_list:")
+    logger.debug(truncated_pdf_text)
+
     generated_qa = []
     for text_chunk in truncated_pdf_text:
-        qa = await gpt_generate_qa(text_chunk)
+        qa = await gpt_generate_qa(server, md5_name, text_chunk)
         if qa is None:
             continue
         generated_qa = generated_qa + qa
@@ -474,6 +546,7 @@ async def async_json2questions(
         file.write(qa_text)
 
     task_status[task_id] = "completed"
+    logger.debug("Q&A Generation Successful.")
 
 
 if __name__ == "__main__":

@@ -10,6 +10,11 @@
 7. In database, map IP address to every uploaded PDF file.
 *. Figure out how to get unstructured.io to read images into text - quickly...
 
+Errors:
+For Chapter 7 - How cells use energy #87 is A,C,D (NOT b!!). Increase answer accuracy! !
+#32 - it's 2 CO2 molecules
+#90 - it's B (from in to out)
+#93 - it's C - pyruvic acid
 
 Tests:
 1. Test if we get the # (number) of page number tokens correct for specific PDF files: Ensures we parse out page number tokens properly.

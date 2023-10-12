@@ -24,6 +24,7 @@ OPENAI_API_KEY = "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"
 UPLOAD_FOLDER = "./data/pdf-uploads"
 JSON_FOLDER = "./data/pdf-json"
 QA_FOLDER = "./data/pdf-qa"
+LOG_FOLDER = "./data/pdf-logs"
 ALLOWED_EXTENSIONS = {"pdf"}
 
 # Configure quart
@@ -32,6 +33,7 @@ server.config["UNSTRUCTUED_API_URL"] = UNSTRUCTUED_API_URL
 server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["QA_FOLDER"] = QA_FOLDER
+server.config["LOG_FOLDER"] = LOG_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 # server.jinja_env.globals.update(zip=zip)
@@ -159,6 +161,7 @@ async def pdf2json():
             filename,
             md5_name,
             task_id,
+            request.remote_addr,
         )
 
         # Return the task ID to the client
