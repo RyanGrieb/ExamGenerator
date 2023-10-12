@@ -236,18 +236,20 @@ def truncate2gpt_tokens(
     # NOTE: Right now we use 1000 tokens to keep gpt accurate and consise for our information provided.
     truncated_pdf_text = []
     current_tokens = 0
+    total_tokens = 0
     encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
     for section in page_sections:
         num_tokens = len(encoding.encode(section))
-        # print(num_tokens)
+
         if num_tokens + current_tokens >= 1000 or len(truncated_pdf_text) < 1:
             truncated_pdf_text.append("")
+            total_tokens += current_tokens
             current_tokens = 0
 
         truncated_pdf_text[-1] += section
         current_tokens += num_tokens
 
-    logger.debug(f"Number of tokens used for pdf text: {current_tokens}")
+    logger.debug(f"Number of tokens used for pdf text: {total_tokens}")
     return truncated_pdf_text
 
 
@@ -381,8 +383,8 @@ async def gpt_generate_qa(server, md5_name, data):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: gpt_generate_qa")
 
-    print(f"Generate Q&A from text chunk: {data}")
-    logger.debug(f"Generate Q&A from text chunk: {data}")
+    print(f"*********************** Generate Q&A from text chunk: {data}")
+    logger.debug(f"*********************** Generate Q&A from text chunk: {data}")
 
     prompt = f"Generate clever Q&A flashcards each page from the following UNORDERED tokens. Make sure to cleverly answer the question generated. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
