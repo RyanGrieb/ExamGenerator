@@ -2,6 +2,11 @@
 task_id_filename_dict = {};
 task_id_md5_name_dict = {};
 
+function get_logs(md5_name) {
+  console.log("Getting logs for " + md5_name);
+  window.open(`/logs/${md5_name}`);
+}
+
 function set_file_status(filename, md5_name, status) {
   p_element = document.querySelector(`#converting-status-${md5_name}`);
   p_element.textContent = status;
@@ -45,7 +50,6 @@ function add_qa_set_to_page(
 // Make our q&a set look prettier. Remove any empty answers, and format [NEWLINE] strings with an actual \n.
 // Number our q&a set too.
 function post_process_qa_set(qa_set) {
-
   // Sometimes, we get [NEWLINE] in our qa_set, we just want \n.
   qa_set = qa_set.replaceAll("[NEWLINE]", "\n");
   // Split the input string into lines
@@ -263,6 +267,14 @@ window.addEventListener("load", () => {
     file_list_elem.appendChild(b);
     file_list_elem.appendChild(document.createTextNode(" - "));
     file_list_elem.appendChild(p);
+
+    // Add a view logs button to the first_list_elem
+    const viewLogsBtn = document.createElement("button");
+    viewLogsBtn.innerHTML = "View logs";
+    viewLogsBtn.onclick = () => {
+      get_logs(md5_name);
+    };
+    file_list_elem.appendChild(viewLogsBtn);
 
     converting_files_list.appendChild(file_list_elem);
 

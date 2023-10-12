@@ -135,6 +135,17 @@ def get_pdf_qa(md5_name):
         return file.read()
 
 
+# Get the logs of the associated file.
+@server.route("/logs/<md5_name>", methods=["GET"])
+async def get_logs(md5_name):
+    with open(f'{server.config["LOG_FOLDER"]}/{md5_name}.txt', "r") as file:
+        return await render_template(
+            "log_info.html",
+            log_data=file.read(),
+            last_updated=dir_last_updated("./src/static"),
+        )
+
+
 # Retrieve the status of a specific task
 @server.route("/task_status/<task_id>", methods=["GET"])
 def get_task_status(task_id):

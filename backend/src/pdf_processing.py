@@ -383,8 +383,8 @@ async def gpt_generate_qa(server, md5_name, data):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: gpt_generate_qa")
 
-    print(f"*********************** Generate Q&A from text chunk: {data}")
-    logger.debug(f"*********************** Generate Q&A from text chunk: {data}")
+    print(f"*********************** Generate Q&A from text chunk:\n{data}")
+    logger.debug(f"*********************** Generate Q&A from text chunk:\n{data}")
 
     prompt = f"Generate clever Q&A flashcards each page from the following UNORDERED tokens. Make sure to cleverly answer the question generated. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
@@ -397,8 +397,8 @@ async def gpt_generate_qa(server, md5_name, data):
         temperature=0,
     )
     response_data: str = response["choices"][0]["message"]["content"]
-    print("GPT Q&A RESPONSE DATA:")
-    logger.debug("GPT Q&A RESPONSE DATA:")
+    print("*********************** GPT Q&A RESPONSE DATA:")
+    logger.debug("*********************** GPT Q&A RESPONSE DATA:")
 
     print(response_data)
     logger.debug(response_data)
@@ -525,8 +525,7 @@ async def async_json2questions(
     truncated_pdf_text = truncate2gpt_tokens(
         server, md5_name, pdf_text, just_split_pages=False
     )
-    logger.debug("Truncated text_list:")
-    logger.debug(truncated_pdf_text)
+    logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
     generated_qa = []
     for text_chunk in truncated_pdf_text:
