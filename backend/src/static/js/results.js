@@ -11,14 +11,20 @@ function set_file_status(filename, md5_name, status) {
   p_element = document.querySelector(`#converting-status-${md5_name}`);
   p_element.textContent = status;
 
+  loading_element = document.querySelector(`#loader-${md5_name}`);
+  qa_set_title = document.querySelector(`#qa-set-title-${md5_name}`);
+
+
   // Remove loading element if status is 'Finshed.'
   if (status === "Finished.") {
-    loading_element = document.querySelector(`#loader-${md5_name}`);
     loading_element.classList.remove("loader");
     loading_element.classList.add("checkmark-done");
-
-    qa_set_title = document.querySelector(`#qa-set-title-${md5_name}`);
     qa_set_title.innerHTML = `<b>${filename}</b> - Generated Questions & Answers:`;
+  }else if(status === "Error."){
+    loading_element.classList.remove("loader");
+    loading_element.classList.add("warn");    
+    loading_element.classList.add("warning");    
+    qa_set_title.innerHTML = `<b>${filename}</b> - Error occured during generation.`;
   }
 }
 
@@ -107,6 +113,9 @@ async function checkTaskStatus(task_id, callback) {
         console.error(
           `Unknown status for task with ID ${task_id}: ${statusData.status}`
         );
+        set_file_status(task_id_filename_dict[task_id], task_id_md5_name_dict[task_id], "Error.");
+        delete task_id_filename_dict[task_id];
+        delete task_id_md5_name_dict[task_id];
         clearInterval(interval); // Stop checking on error
       }
     } else {

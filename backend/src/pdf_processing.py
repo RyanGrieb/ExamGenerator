@@ -11,165 +11,7 @@ import traceback
 
 
 def main():
-    # Create a sample list of elements
-    """
-    sample_elements = [
-        {
-            "type": "Title",
-            "element_id": "1627230dedcf230775f4e5c4ad436617",
-            "metadata": {
-                "coordinates": {
-                    "points": [
-                        [85.2, 61.58881599999995],
-                        [85.2, 115.61281600000001],
-                        [625.16988, 115.61281600000001],
-                        [625.16988, 61.58881599999995],
-                    ],
-                    "system": "PixelSpace",
-                    "layout_width": 720,
-                    "layout_height": 540,
-                },
-                "filename": "cffdc390b61f3ad60efb35874f29ae21.pdf",
-                "filetype": "application/pdf",
-                "page_number": 5,
-            },
-            "text": "Key Security Concepts",
-        },
-        {
-            "type": "Title",
-            "element_id": "fbe3cdfd721911e4c4456a71bd1a1d9a",
-            "metadata": {
-                "coordinates": {
-                    "points": [
-                        [63.48, 176.46231999999998],
-                        [63.48, 199.50232],
-                        [224.80607999999998, 199.50232],
-                        [224.80607999999998, 176.46231999999998],
-                    ],
-                    "system": "PixelSpace",
-                    "layout_width": 720,
-                    "layout_height": 540,
-                },
-                "filename": "cffdc390b61f3ad60efb35874f29ae21.pdf",
-                "filetype": "application/pdf",
-                "page_number": 5,
-            },
-            "text": "Confidentiality",
-        },
-        {
-            "type": "Title",
-            "element_id": "ad5ea6aae7ca18f5f3823bfd0a0f0e40",
-            "metadata": {
-                "coordinates": {
-                    "points": [
-                        [322.58, 179.012],
-                        [322.58, 203.012],
-                        [416.660003816, 203.012],
-                        [416.660003816, 179.012],
-                    ],
-                    "system": "PixelSpace",
-                    "layout_width": 720,
-                    "layout_height": 540,
-                },
-                "filename": "cffdc390b61f3ad60efb35874f29ae21.pdf",
-                "filetype": "application/pdf",
-                "page_number": 5,
-            },
-            "text": "Integrity",
-        },
-        {
-            "type": "Title",
-            "element_id": "12f67f8539c46701e62d1c50254cf025",
-            "metadata": {
-                "coordinates": {
-                    "points": [
-                        [517.9, 179.012],
-                        [517.9, 203.012],
-                        [646.54, 203.012],
-                        [646.54, 179.012],
-                    ],
-                    "system": "PixelSpace",
-                    "layout_width": 720,
-                    "layout_height": 540,
-                },
-                "filename": "cffdc390b61f3ad60efb35874f29ae21.pdf",
-                "filetype": "application/pdf",
-                "page_number": 5,
-            },
-            "text": "Availability",
-        },
-        {
-            "type": "ListItem",
-            "element_id": "478d1d6eeca99398d4f816a080acba57",
-            "metadata": {
-                "coordinates": {
-                    "points": [
-                        [36.912, 241.32367999999997],
-                        [36.912, 469.956672],
-                        [210.15312, 469.956672],
-                        [210.15312, 241.32367999999997],
-                    ],
-                    "system": "PixelSpace",
-                    "layout_width": 720,
-                    "layout_height": 540,
-                },
-                "filename": "cffdc390b61f3ad60efb35874f29ae21.pdf",
-                "filetype": "application/pdf",
-                "page_number": 5,
-            },
-            "text": "Preserving authorized restrictions on information access and disclosure, including means for protecting personal privacy and proprietary information",
-        },
-        {
-            "type": "ListItem",
-            "element_id": "fd6abb2f4cf6b150c4b6dae69a640847",
-            "metadata": {
-                "coordinates": {
-                    "points": [
-                        [262.1, 239.81367999999998],
-                        [262.1, 426.56368],
-                        [449.30672000000004, 426.56368],
-                        [449.30672000000004, 239.81367999999998],
-                    ],
-                    "system": "PixelSpace",
-                    "layout_width": 720,
-                    "layout_height": 540,
-                },
-                "filename": "cffdc390b61f3ad60efb35874f29ae21.pdf",
-                "filetype": "application/pdf",
-                "page_number": 5,
-            },
-            "text": "Guarding against improper information modification or destruction, including ensuring information nonrepudiation and authenticity",
-        },
-        {
-            "type": "ListItem",
-            "element_id": "f0028bb2ec38ed65b5682636ed2a7b6f",
-            "metadata": {
-                "coordinates": {
-                    "points": [
-                        [481.54, 245.64368000000002],
-                        [481.54, 327.51368],
-                        [668.310016, 327.51368],
-                        [668.310016, 245.64368000000002],
-                    ],
-                    "system": "PixelSpace",
-                    "layout_width": 720,
-                    "layout_height": 540,
-                },
-                "filename": "cffdc390b61f3ad60efb35874f29ae21.pdf",
-                "filetype": "application/pdf",
-                "page_number": 5,
-            },
-            "text": "Ensuring timely and reliable access to and use of information",
-        }
-        # Add more elements as needed
-    ]
-    """
-    pdf_text = "===page:1===\nFOOOnFOOOnFOOOnFOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOOnFOOO\n===page:1===\n===page:2===\nBAAR\n===page:2==="
-    # Call the merge_pdf_json_elements function
-    text_list = truncate2gpt_tokens(pdf_text)
-
-    # Print the modified elements (for testing purposes)
-    print(text_list)
+    None
 
 
 def get_logger_for_file(server: Quart, md5_name: str) -> logging.Logger:
@@ -200,10 +42,12 @@ def get_logger_for_file(server: Quart, md5_name: str) -> logging.Logger:
     return logger
 
 
-# Given a pdf_text string (Has the formatted page numbers), return a list of text under the 4096 token limit for chat-gpt
 def truncate2gpt_tokens(
     server: Quart, md5_name: str, pdf_text: str, just_split_pages=False
 ):
+    """
+    Given a pdf_text string (Has the formatted page numbers), return a list of text under the 4096 token limit for chat-gpt
+    """
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: truncate2gpt_tokens")
 
@@ -511,45 +355,51 @@ async def async_json2questions(
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: async_json2questions")
 
-    qa_filepath = f'{server.config["QA_FOLDER"]}/{md5_name}.txt'
+    try:
+        qa_filepath = f'{server.config["QA_FOLDER"]}/{md5_name}.txt'
+        # Check if file already exists, if so, set the task status as completed
+        if os.path.isfile(qa_filepath):
+            logger.debug(f"Q&A already exists for {filename}, returning...")
+            task_status[task_id] = "completed"
+            return
 
-    # Check if file already exists, if so, set the task status as completed
-    if os.path.isfile(qa_filepath):
-        logger.debug(f"Q&A already exists for {filename}, returning...")
+        pdf_text = json2text(server, md5_name)
+
+        logger.debug("JSON text (converted from JSON): ")
+        logger.debug(pdf_text)
+
+        truncated_pdf_text = truncate2gpt_tokens(
+            server, md5_name, pdf_text, just_split_pages=False
+        )
+        logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
+
+        generated_qa = []
+        for text_chunk in truncated_pdf_text:
+            qa = await gpt_generate_qa(server, md5_name, text_chunk)
+            if qa is None:
+                continue
+            generated_qa = generated_qa + qa
+
+        qa_text = ""
+        for qa in generated_qa:
+            qa_text += f"{qa}\n"
+
+        # Save Q&A set to filesystem
+        # Create /pdf-qa directory if it doesn't exist.
+        if not os.path.exists(server.config["QA_FOLDER"]):
+            os.makedirs(server.config["QA_FOLDER"])
+
+        with open(qa_filepath, "w") as file:
+            file.write(qa_text)
+
         task_status[task_id] = "completed"
-        return
+        logger.debug("Q&A Generation Successful.")
 
-    pdf_text = json2text(server, md5_name)
-
-    logger.debug("JSON text (converted from JSON): ")
-    logger.debug(pdf_text)
-
-    truncated_pdf_text = truncate2gpt_tokens(
-        server, md5_name, pdf_text, just_split_pages=False
-    )
-    logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
-
-    generated_qa = []
-    for text_chunk in truncated_pdf_text:
-        qa = await gpt_generate_qa(server, md5_name, text_chunk)
-        if qa is None:
-            continue
-        generated_qa = generated_qa + qa
-
-    qa_text = ""
-    for qa in generated_qa:
-        qa_text += f"{qa}\n"
-
-    # Save Q&A set to filesystem
-    # Create /pdf-qa directory if it doesn't exist.
-    if not os.path.exists(server.config["QA_FOLDER"]):
-        os.makedirs(server.config["QA_FOLDER"])
-
-    with open(qa_filepath, "w") as file:
-        file.write(qa_text)
-
-    task_status[task_id] = "completed"
-    logger.debug("Q&A Generation Successful.")
+    except Exception as e:
+        print("Error:", str(e), file=sys.stderr)
+        logger.error(str(e))
+        logger.error(traceback.format_exc())
+        task_status[task_id] = "error"
 
 
 if __name__ == "__main__":
