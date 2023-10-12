@@ -449,7 +449,9 @@ async def async_pdf2json(
     try:
         # Check if the variables are received correctly
         logger.info("Function: async_pdf2json")
-        logger.debug(f"Uploader: {ip_address}")
+        print(f"Uploader: {ip_address}")
+        print(f"Uploader: {ip_address}", file=sys.stderr)
+        # logger.debug(f"Uploader: {ip_address}")
         logger.debug(f"Received filename: {filename}")
         logger.debug(f"Received md5_name: {md5_name}")
 
