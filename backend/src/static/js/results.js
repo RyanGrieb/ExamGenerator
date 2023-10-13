@@ -1,7 +1,3 @@
-// Dictionary that associates the task_id with the filename
-task_id_filename_dict = {};
-task_id_md5_name_dict = {};
-
 function get_logs(md5_name) {
   console.log("Getting logs for " + md5_name);
   window.open(`/logs/${md5_name}`);
@@ -14,16 +10,15 @@ function set_file_status(filename, md5_name, status) {
   loading_element = document.querySelector(`#loader-${md5_name}`);
   qa_set_title = document.querySelector(`#qa-set-title-${md5_name}`);
 
-
   // Remove loading element if status is 'Finshed.'
   if (status === "Finished.") {
     loading_element.classList.remove("loader");
     loading_element.classList.add("checkmark-done");
     qa_set_title.innerHTML = `<b>${filename}</b> - Generated Questions & Answers:`;
-  }else if(status === "Error."){
+  } else if (status === "Error.") {
     loading_element.classList.remove("loader");
-    loading_element.classList.add("warn");    
-    loading_element.classList.add("warning");    
+    loading_element.classList.add("warn");
+    loading_element.classList.add("warning");
     qa_set_title.innerHTML = `<b>${filename}</b> - Error occured during generation.`;
   }
 }
@@ -51,6 +46,48 @@ function add_qa_set_to_page(
     paragraph.innerHTML = line;
     qaSetDiv.appendChild(paragraph);
   });
+}
+
+// Tell the server to convert specific files to a specific export_type
+async function post_export_results(filenames, md5_names, export_type) {
+  try {
+    // Create a FormData object to send data with the POST request
+    const formData = new FormData();
+    formData.append("filenames", filenames);
+    formData.append("md5_names", md5_names);
+    formData.append("export_type", export_type);
+
+    // Send a POST request to the server and wait for the response
+    const response = await fetch("/export_results", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.ok) {
+      console.log("GOT OK FROM post_export_results");
+      //TODO: Handle the multiple task_ids we get back & assign them to our associated dictonaries
+      /*const responseData = await response.json();
+      const task_id = responseData.task_id;
+
+      task_id_filename_dict[task_id] = filename;
+      task_id_md5_name_dict[task_id] = md5_name;
+
+      // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
+      checkTaskStatus(task_id, (task_id, filename, md5_name) => {
+        console.log(
+          "JSON2Questions callback done: " + task_id + " | " + filename
+        );
+        // Send a GET request for the questions generated server-side
+        get_json2questions(filename, md5_name);
+      });*/
+    } else {
+      // Handle network or other errors here
+      console.error(`Error sending ${filename} to the server: ${error}`);
+    }
+  } catch (error) {
+    // Handle network or other errors here
+    console.error(`Error sending ${filename} to the server: ${error}`);
+  }
 }
 
 // Make our q&a set look prettier. Remove any empty answers, and format [NEWLINE] strings with an actual \n.
@@ -82,7 +119,7 @@ function post_process_qa_set(qa_set) {
 }
 
 // Function to periodically check task status
-async function checkTaskStatus(task_id, callback) {
+async function checkTaskStatus(task_id, file_name, md5_name, callback) {
   // Define your logic to check task status here
   // You can use setInterval or any other mechanism to check status periodically
   // Example:
@@ -98,13 +135,7 @@ async function checkTaskStatus(task_id, callback) {
       if (statusData.status === "completed") {
         clearInterval(interval); // Stop checking once it's complete
         console.log(`Task with ID ${task_id} is complete.`);
-        callback(
-          task_id,
-          task_id_filename_dict[task_id],
-          task_id_md5_name_dict[task_id]
-        );
-        delete task_id_filename_dict[task_id];
-        delete task_id_md5_name_dict[task_id];
+        callback(task_id, file_name, md5_name);
         // You can perform further actions here
       } else if (statusData.status === "processing") {
         console.log(`Task with ID ${task_id} is still processing.`);
@@ -113,9 +144,7 @@ async function checkTaskStatus(task_id, callback) {
         console.error(
           `Unknown status for task with ID ${task_id}: ${statusData.status}`
         );
-        set_file_status(task_id_filename_dict[task_id], task_id_md5_name_dict[task_id], "Error.");
-        delete task_id_filename_dict[task_id];
-        delete task_id_md5_name_dict[task_id];
+        set_file_status(file_name, md5_name, "Error.");
         clearInterval(interval); // Stop checking on error
       }
     } else {
@@ -163,11 +192,8 @@ async function post_json2questions(filename, md5_name) {
       const responseData = await response.json();
       const task_id = responseData.task_id;
 
-      task_id_filename_dict[task_id] = filename;
-      task_id_md5_name_dict[task_id] = md5_name;
-
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
-      checkTaskStatus(task_id, (task_id, filename, md5_name) => {
+      checkTaskStatus(task_id, filename, md5_name, (task_id) => {
         console.log(
           "JSON2Questions callback done: " + task_id + " | " + filename
         );
@@ -201,11 +227,8 @@ async function post_pdf2json(filename, md5_name) {
       const responseData = await response.json();
       const task_id = responseData.task_id;
 
-      task_id_filename_dict[task_id] = filename;
-      task_id_md5_name_dict[task_id] = md5_name;
-
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
-      checkTaskStatus(task_id, (task_id, filename, md5_name) => {
+      checkTaskStatus(task_id, filename, md5_name, (task_id) => {
         console.log("pfd2json callback done: " + task_id + " | " + filename);
         set_file_status(
           filename,
@@ -214,7 +237,6 @@ async function post_pdf2json(filename, md5_name) {
         );
         post_json2questions(filename, md5_name);
       });
-      // TOOD: Handle the completion response for checkTaskStatus here....
     } else {
       // Handle errors here
       console.error(`Error sending ${filename} to the server.`);
