@@ -1,3 +1,6 @@
+var file_names = [];
+var md5_names = [];
+
 function get_logs(md5_name) {
   console.log("Getting logs for " + md5_name);
   window.open(`/logs/${md5_name}`);
@@ -23,12 +26,7 @@ function set_file_status(filename, md5_name, status) {
   }
 }
 
-function add_qa_set_to_page(
-  filename,
-  md5_name,
-  qa_set,
-  final_generation = false
-) {
+function add_qa_set_to_page(filename, md5_name, qa_set, final_generation = false) {
   const qaSetDiv = document.querySelector(`#qa-set-${md5_name}`);
   set_file_status(filename, md5_name, "Finished.");
 
@@ -48,13 +46,17 @@ function add_qa_set_to_page(
   });
 }
 
+function on_export_click() {
+  post_export_results(file_names, md5_names, "pdf");
+}
+
 // Tell the server to convert specific files to a specific export_type
-async function post_export_results(filenames, md5_names, export_type) {
+async function post_export_results(file_names, md5_names, export_type) {
   try {
     // Create a FormData object to send data with the POST request
     const formData = new FormData();
-    formData.append("filenames", filenames);
-    formData.append("md5_names", md5_names);
+    formData.append("file_names", JSON.stringify(file_names));
+    formData.append("md5_names", JSON.stringify(md5_names));
     formData.append("export_type", export_type);
 
     // Send a POST request to the server and wait for the response
@@ -65,28 +67,29 @@ async function post_export_results(filenames, md5_names, export_type) {
 
     if (response.ok) {
       console.log("GOT OK FROM post_export_results");
-      //TODO: Handle the multiple task_ids we get back & assign them to our associated dictonaries
-      /*const responseData = await response.json();
+
+      const responseData = await response.json();
       const task_id = responseData.task_id;
+      const file_id = responseData.file_id;
 
-      task_id_filename_dict[task_id] = filename;
-      task_id_md5_name_dict[task_id] = md5_name;
-
-      // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
-      checkTaskStatus(task_id, (task_id, filename, md5_name) => {
-        console.log(
-          "JSON2Questions callback done: " + task_id + " | " + filename
-        );
-        // Send a GET request for the questions generated server-side
-        get_json2questions(filename, md5_name);
-      });*/
+      checkTaskStatus(
+        task_id,
+        () => {
+          window.open(`/exports/${file_id}.${export_type}`);
+          //console.log("Export complete");
+          // FIXME: Send a get request to see what our results are!
+        },
+        () => {
+          //FIXME: Tell the user an error occured when exporting!
+        },
+      );
     } else {
       // Handle network or other errors here
-      console.error(`Error sending ${filename} to the server: ${error}`);
+      console.error(`Error sending export request to the server: ${error}`);
     }
   } catch (error) {
     // Handle network or other errors here
-    console.error(`Error sending ${filename} to the server: ${error}`);
+    console.error(`Error sending export request to the server: ${error}`);
   }
 }
 
@@ -118,11 +121,7 @@ function post_process_qa_set(qa_set) {
   return qa_set;
 }
 
-// Function to periodically check task status
-async function checkTaskStatus(task_id, file_name, md5_name, callback) {
-  // Define your logic to check task status here
-  // You can use setInterval or any other mechanism to check status periodically
-  // Example:
+async function checkTaskStatus(task_id, completedCallback, errorCallback) {
   const interval = setInterval(async () => {
     // Send a GET request to check the task status using the task_id
     const statusResponse = await fetch(`/task_status/${task_id}`, {
@@ -135,23 +134,19 @@ async function checkTaskStatus(task_id, file_name, md5_name, callback) {
       if (statusData.status === "completed") {
         clearInterval(interval); // Stop checking once it's complete
         console.log(`Task with ID ${task_id} is complete.`);
-        callback(task_id, file_name, md5_name);
+        completedCallback();
         // You can perform further actions here
       } else if (statusData.status === "processing") {
         console.log(`Task with ID ${task_id} is still processing.`);
-        // Handle ongoing processing if needed
       } else {
-        console.error(
-          `Unknown status for task with ID ${task_id}: ${statusData.status}`
-        );
-        set_file_status(file_name, md5_name, "Error.");
         clearInterval(interval); // Stop checking on error
+        console.error(`Unknown status for task with ID ${task_id}: ${statusData.status}`);
+        errorCallback();
       }
     } else {
-      console.error(
-        `Error checking task status for task ID ${task_id}: ${statusResponse.status}`
-      );
       clearInterval(interval); // Stop checking on error
+      console.error(`Error checking task status for task ID ${task_id}: ${statusResponse.status}`);
+      errorCallback();
     }
   }, 2000); // Check every 2 seconds (adjust this as needed)
 }
@@ -193,13 +188,19 @@ async function post_json2questions(filename, md5_name) {
       const task_id = responseData.task_id;
 
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
-      checkTaskStatus(task_id, filename, md5_name, (task_id) => {
-        console.log(
-          "JSON2Questions callback done: " + task_id + " | " + filename
-        );
-        // Send a GET request for the questions generated server-side
-        get_json2questions(filename, md5_name);
-      });
+      checkTaskStatus(
+        task_id,
+        () => {
+          // The task was successful, lets get the generated questions!
+          console.log("JSON2Questions callback done: " + task_id + " | " + filename);
+          // Send a GET request for the questions generated server-side
+          get_json2questions(filename, md5_name);
+        },
+        () => {
+          // The task was unsuccessful and an error occured! Tell that to the user..
+          set_file_status(filename, md5_name, "Error: A problem occured when generating questions.");
+        },
+      );
     } else {
       // Handle network or other errors here
       console.error(`Error sending ${filename} to the server: ${error}`);
@@ -228,15 +229,18 @@ async function post_pdf2json(filename, md5_name) {
       const task_id = responseData.task_id;
 
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
-      checkTaskStatus(task_id, filename, md5_name, (task_id) => {
-        console.log("pfd2json callback done: " + task_id + " | " + filename);
-        set_file_status(
-          filename,
-          md5_name,
-          "Generating questions and answers..."
-        );
-        post_json2questions(filename, md5_name);
-      });
+      checkTaskStatus(
+        task_id,
+        () => {
+          console.log("pfd2json callback done: " + task_id + " | " + filename);
+          set_file_status(filename, md5_name, "Generating questions and answers...");
+          post_json2questions(filename, md5_name);
+        },
+        () => {
+          // The task was unsuccessful and an error occured! Tell that to the user..
+          set_file_status(filename, md5_name, "Error: A problem occured when generating text from PDF.");
+        },
+      );
     } else {
       // Handle errors here
       console.error(`Error sending ${filename} to the server.`);
@@ -255,9 +259,6 @@ window.addEventListener("load", () => {
 
   console.log(files);
 
-  var file_names = [];
-  var md5_names = [];
-
   for (const file_json of files) {
     file_names.push(file_json["file_name"]);
     md5_names.push(file_json["md5_name"]);
@@ -274,9 +275,7 @@ window.addEventListener("load", () => {
     const md5_name = md5_names[i];
 
     // ============== Create converting-files-list (li) elements ==============
-    const converting_files_list = document.getElementById(
-      "converting-files-list"
-    );
+    const converting_files_list = document.getElementById("converting-files-list");
 
     const file_list_elem = document.createElement("li");
     file_list_elem.id = `file-list-elm-${md5_name}`;
@@ -328,9 +327,7 @@ window.addEventListener("load", () => {
 
     // Set the text content of the paragraph
     qaSetTitleParagraph.appendChild(bElement);
-    qaSetTitleParagraph.appendChild(
-      document.createTextNode(" - Processing....")
-    );
+    qaSetTitleParagraph.appendChild(document.createTextNode(" - Processing...."));
 
     // Append the paragraph to the qa-set div
     qaSetDiv.appendChild(qaSetTitleParagraph);

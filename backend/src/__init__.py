@@ -3,19 +3,10 @@ import sys
 import openai
 import hashlib
 import uuid
-from . import pdf_processing
+from . import pdf_processing, exporter
+import json
 
-from quart import (
-    Quart,
-    Request,
-    render_template,
-    flash,
-    request,
-    redirect,
-    url_for,
-    session,
-    jsonify,
-)
+from quart import Quart, Request, render_template, flash, request, redirect, url_for, session, jsonify, send_file
 from werkzeug.utils import secure_filename
 
 
@@ -25,6 +16,7 @@ UPLOAD_FOLDER = "./data/pdf-uploads"
 JSON_FOLDER = "./data/pdf-json"
 QA_FOLDER = "./data/pdf-qa"
 LOG_FOLDER = "./data/pdf-logs"
+EXPORT_FOLDER = "./data/exports"
 ALLOWED_EXTENSIONS = {"pdf"}
 
 # Configure quart
@@ -34,6 +26,7 @@ server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["QA_FOLDER"] = QA_FOLDER
 server.config["LOG_FOLDER"] = LOG_FOLDER
+server.config["EXPORT_FOLDER"] = EXPORT_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 # server.jinja_env.globals.update(zip=zip)
@@ -48,11 +41,7 @@ openai.api_key = OPENAI_API_KEY
 
 def dir_last_updated(folder):
     return str(
-        max(
-            os.path.getmtime(os.path.join(root_path, f))
-            for root_path, _, files in os.walk(folder)
-            for f in files
-        )
+        max(os.path.getmtime(os.path.join(root_path, f)) for root_path, _, files in os.walk(folder) for f in files)
     )
 
 
@@ -111,9 +100,7 @@ async def home():
     if request.method == "POST":
         return await upload_file(request)
 
-    return await render_template(
-        "index.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("index.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.errorhandler(404)
@@ -123,9 +110,7 @@ async def page_not_found(e):
 
 @server.route("/help", methods=["GET"])
 async def help():
-    return await render_template(
-        "help.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("help.html", last_updated=dir_last_updated("./src/static"))
 
 
 # Get the Q&A set of the associated file.
@@ -146,11 +131,55 @@ async def get_logs(md5_name):
         )
 
 
+# Get the export file of the associated <file> name.
+@server.route("/exports/<file>", methods=["GET"])
+async def get_exported_document(file):
+    export_folder = server.config["EXPORT_FOLDER"]
+    return await send_file(f"{export_folder}/{file}", as_attachment=False)
+
+
 # Retrieve the status of a specific task
 @server.route("/task_status/<task_id>", methods=["GET"])
 def get_task_status(task_id):
     status = task_status.get(task_id, "not_found")
     return jsonify({"status": status})
+
+
+@server.route("/export_results", methods=["POST"])
+async def export_results():
+    request_form = await request.form
+    try:
+        file_names = request_form.get("file_names")
+        md5_names = json.loads(request_form.get("md5_names"))
+        export_type = request_form.get("export_type")
+
+        # Generate a unique task ID, set it as processing
+        task_id = str(uuid.uuid4())
+        # Generate a unique  file_id, this will be the name of the exported file.
+        file_id = str(uuid.uuid4())
+
+        task_status[task_id] = "processing"
+
+        # Begin the export process
+        server.add_background_task(
+            exporter.export_files,
+            server,
+            task_status,
+            task_id,
+            file_id,
+            md5_names,
+            export_type,
+        )
+
+        # Return the task ID & file ID to the client
+        # FIXME: Return file extension associated with our export_type
+        # file_extension = exporter.get_file_extension(export_type)
+        return jsonify({"task_id": task_id, "file_id": file_id})
+    except Exception as e:
+        print("Error:", str(e), file=sys.stderr)
+        return "Error processing the request"
+
+    return None
 
 
 @server.route("/pdf2json", methods=["POST"])
@@ -176,7 +205,7 @@ async def pdf2json():
         )
 
         # Return the task ID to the client
-        return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
+        return jsonify({"task_id": task_id})
 
     except Exception as e:
         print("Error:", str(e), file=sys.stderr)
@@ -205,7 +234,7 @@ async def json2questions():
         )
 
         # Return the task ID to the client
-        return jsonify({"task_id": task_id, "filename": filename, "md5_name": md5_name})
+        return jsonify({"task_id": task_id})
 
     except Exception as e:
         print("Error:", str(e), file=sys.stderr)

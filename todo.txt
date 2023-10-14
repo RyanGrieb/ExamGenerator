@@ -1,9 +1,10 @@
+0. Do q&a post-processing server-side instead of client side. (Since were exporting we need it on server side too..)
+0. task_status will cause memory leaks if we don't check on old tasks that are not running, or the user backed out. (Have a function check the dictionary every 5-10 sections and keep track of their lifetimes.)
 0. Current GPT prompt allows for Q&A to be too large. Specify that the questions and answers should be brief/short?
 0. Cursor flickers when we upload a file in the file explorer.
 0. Bio ch8 slides - oxidation & reduction should have been included in Q&A set.
 0. Expandable/Closeable <div> for each generated PDF & it's Q&A set.
 1. Store previously generated PDFs in a cookie, give user ability to view them.
-2. Export option after Q&A generation.
 3. CSS/HTML Indication when user hovers file over the upload area.
 4. User accounts/registration - Google, Github, ect.
 5. Stop running task if the user doesn't send GET request checking on it after 5-10 seconds.

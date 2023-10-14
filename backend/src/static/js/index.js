@@ -47,7 +47,6 @@ function upload_file(file) {
     }
   }
 
-  
   // Hide the convert button again, since were waiting on documents to upload:
   convertButton.style.display = "none";
 
@@ -84,7 +83,7 @@ function upload_file(file) {
         file_name: response_file_name,
         md5_name: response_md5_name,
       };
-      add_to_list_cookie("files", file_json)
+      add_to_list_cookie("files", file_json);
 
       totalFilesUploaded++;
       //console.log(`${totalFilesUploaded} - ${fileList.getElementsByTagName("li").length}`)
