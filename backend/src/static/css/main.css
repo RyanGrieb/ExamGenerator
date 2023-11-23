@@ -1,6 +1,6 @@
 body {
   /*background-color:white;*/
-  background: radial-gradient(circle, #ffffff, rgba(112, 24, 255, 0.116));
+  background: radial-gradient(circle, #ffffff, #030adf1e);
   font-family: "Dejavu Sans", Arial, Verdana, sans-serif;
 }
 
@@ -8,10 +8,24 @@ li p {
   display: inline;
 }
 
+li a {
+  text-decoration: none;
+  font-family: Georgia;
+  font-size: 18px;
+  color: #000;
+  opacity: 85%;
+}
+
+li a:hover {
+  opacity: 1;
+  color: #767fc2;
+}
+
 nav {
   display: flex;
   justify-content: space-between; /* To evenly distribute the items horizontally */
-  background-color: rgba(112, 24, 255, 0.116);
+  /*background-color: rgba(3, 10, 223, 0.116);*/
+  background-color: #b3baf3;
   padding: 10px;
   border-radius: 5px;
 }
@@ -25,11 +39,14 @@ nav ul {
 
 nav li {
   margin-right: 20px;
+  font-family: Georgia;
+  font-weight: bold;
+  font-size: 18px;
 }
 
 nav a {
   text-decoration: none;
-  color: rgb(22, 22, 58);
+  color: #000;
 }
 
 /* Add hover effect for links */
@@ -37,13 +54,27 @@ nav a:hover {
   text-decoration: underline;
 }
 
+h1 {
+  font-size: 250%;
+}
+
+h2 {
+  font-size: 150%;
+}
+
+p {
+  font-family: Georgia;
+  font-size: 130%;
+}
+
 #status-div {
   padding-top: 10px;
 }
 
 #toc-container {
-  margin-top: 10px;
-  background: #f9f9f9 none repeat scroll 0 0;
+  margin: auto;
+  margin-top: 30px;
+  background: #b3bbf394 none repeat scroll 0 0;
   border: 1px solid #aaa;
   display: table;
   font-size: 95%;
@@ -52,18 +83,36 @@ nav a:hover {
   width: auto;
 }
 
-#toc-container li, #toc-container ul, #toc-container ul li{
+#toc-container li,
+#toc-container ul,
+#toc-container ul li {
   list-style: outside none none !important;
   padding: 0;
+}
+
+.toc-list {
+  text-align: center;
 }
 
 .toc-title {
   font-weight: 700;
   text-align: center;
+  font-size: 40px;
+}
+
+#help-faq {
+  font-family: Georgia;
+  text-align: center;
+}
+
+#help-discord {
+  font-family: Georgia;
+  text-align: center;
 }
 
 .center-text {
   text-align: center;
+  font-family: Georgia;
 }
 
 .center-horizontally {
@@ -90,7 +139,7 @@ nav a:hover {
   max-width: 650px; /* Set your desired width */
   min-width: 310px;
   min-height: 250px;
-  border: 3px dashed #8377b9; /* Optional: Add a dashed border for visual style */
+  border: 8px groove #8377b9; /* Optional: Add a dashed border for visual style */
 }
 
 #converting-files-list {
@@ -117,15 +166,11 @@ input[type="submit"] {
 .button-1-disabled {
   align-items: center;
   appearance: none;
-  background-image: radial-gradient(
-    100% 100% at 100% 0,
-    #a9aeaf 0,
-    #646666 100%
-  );
+  background-image: radial-gradient(100% 100% at 100% 0, #a9aeaf 0, #646666 100%);
   border: 0;
   border-radius: 6px;
-  box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px,
-    rgba(45, 35, 66, 0.3) 0 7px 13px -3px, rgba(58, 65, 111, 0.5) 0 -3px 0 inset;
+  box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px,
+    rgba(58, 65, 111, 0.5) 0 -3px 0 inset;
   box-sizing: border-box;
   color: #c7c4c4;
   cursor: wait;
@@ -148,21 +193,17 @@ input[type="submit"] {
   white-space: nowrap;
   will-change: box-shadow, transform;
   font-size: 18px;
-  width: 150px;  
+  width: 150px;
 }
 
 .button-1 {
   align-items: center;
   appearance: none;
-  background-image: radial-gradient(
-    100% 100% at 100% 0,
-    #5adaff 0,
-    #5468ff 100%
-  );
+  background-image: radial-gradient(100% 100% at 100% 0, #5adaff 0, #5468ff 100%);
   border: 0;
   border-radius: 6px;
-  box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px,
-    rgba(45, 35, 66, 0.3) 0 7px 13px -3px, rgba(58, 65, 111, 0.5) 0 -3px 0 inset;
+  box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px,
+    rgba(58, 65, 111, 0.5) 0 -3px 0 inset;
   box-sizing: border-box;
   color: #fff;
   cursor: pointer;
@@ -184,18 +225,18 @@ input[type="submit"] {
   touch-action: manipulation;
   white-space: nowrap;
   will-change: box-shadow, transform;
-  font-size: 18px;
-  width: 150px;
+  font-family: Georgia;
+  font-size: 24px;
+  width: 165px;
 }
 
 .button-1:focus {
-  box-shadow: #3c4fe0 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px,
-    rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+  box-shadow: #3c4fe0 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px,
+    #3c4fe0 0 -3px 0 inset;
 }
 
 .button-1:hover {
-  box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px,
-    rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+  box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
   transform: translateY(-2px);
 }
 
@@ -256,8 +297,7 @@ input[type="submit"] {
 
 .warn,
 .warn::before,
-.warn::after
-{
+.warn::after {
   position: relative;
   padding: 0;
   margin: 0;
@@ -286,7 +326,7 @@ input[type="submit"] {
   content: "";
   display: block;
   top: -0.08em;
-  left: 0.0em;
+  left: 0em;
   position: absolute;
   border: transparent 0.6em solid;
   border-bottom-color: #fd3;
@@ -303,7 +343,7 @@ input[type="submit"] {
   width: 100%;
   padding: 0 1px;
   text-align: center;
-  font-family: "Garamond";
+  font-family: "Georgia";
   content: "!";
   font-size: 0.65em;
   font-weight: bold;
