@@ -225,6 +225,9 @@ async def gpt_generate_qa(server, md5_name, data):
     )
     response_data: str = response["choices"][0]["message"]["content"]
 
+    # Edgecase: Sometimes GPT returns Q&A set with [NEWLINE] instead of '\n'. Handle it accordingly.
+    response_data = response_data.replace("[NEWLINE]", "\n")
+
     print("*********************** GPT Q&A RESPONSE DATA:")
     logger.debug("*********************** GPT Q&A RESPONSE DATA:")
 
@@ -319,6 +322,8 @@ async def async_pdf2json(
                     task_status[task_id] = "completed"
                 else:
                     await asyncio.sleep(1)
+                    logger.error(response.text)
+                    print(response.text, file=sys.stderr)
                     task_status[task_id] = "error"
 
     except Exception as e:
@@ -357,8 +362,8 @@ async def async_json2questions(server: Quart, task_status, filename: str, md5_na
             generated_qa = generated_qa + qa
 
         qa_text = ""
-        for qa in generated_qa:
-            qa_text += f"{qa}\n"
+        for qa_line in generated_qa:
+            qa_text += f"{qa_line}\n"
 
         # Save Q&A set to filesystem
         # Create /pdf-qa directory if it doesn't exist.
