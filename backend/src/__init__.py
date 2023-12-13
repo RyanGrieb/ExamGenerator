@@ -33,6 +33,8 @@ server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 # Prevent flask form emptying session variables
 # server.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
 conn = None
+
+#FIXME: Prevent duplicate tasks based on task type and file hash.
 task_status = {}
 
 # Configure OpenAI GPT

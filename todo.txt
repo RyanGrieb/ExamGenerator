@@ -1,7 +1,7 @@
 * DECEMBER *
-1. Rename REPO to PDF2Flashcards
-2. Fix [NEWLINE] ouput in PDF files.
-3. Implement keyword: definition feature.
+1. Have front end display flashcards like quizlet, with Q&A sets under it.
+2. Modify PDF output such that Q&A sets are in the shape of a flashcard, and support double sided printing where answers are on the back.
+3. Implement keyword: definition feature. ** Implement tests? E.g. Q&A results should result in even number of lines > 0.
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
 5. Implement export to cheatsheet feature (For keyword: definition feature)
 6. Support PPTX files.
@@ -13,7 +13,7 @@
 11. Hire some dude on fiverr for CSS look & feel after implementing these features.
 12. Fix SEO for google.
 13. Write up report on potential costs of API vs. hardware.
-* FEBUARY *
+* FEBRUARY *
 14. Create LLC
 15. Legal shit? User data, uploaded docs, ect.?
 16. Start marketing

@@ -1,6 +1,8 @@
 var file_names = [];
 var md5_names = [];
 
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
 function get_logs(md5_name) {
   console.log("Getting logs for " + md5_name);
   window.open(`/logs/${md5_name}`);
@@ -17,7 +19,7 @@ function set_file_status(filename, md5_name, status) {
   if (status === "Finished.") {
     loading_element.classList.remove("loader");
     loading_element.classList.add("checkmark-done");
-    qa_set_title.innerHTML = `<b>${filename}</b> - Generated Questions & Answers:`;
+    qa_set_title.innerHTML = `<b>${filename}</b> - Generated Q&A Set:`;
   } else if (status === "Error.") {
     loading_element.classList.remove("loader");
     loading_element.classList.add("warn");
@@ -96,8 +98,6 @@ async function post_export_results(file_names, md5_names, export_type) {
 // Make our q&a set look prettier. Remove any empty answers, and format [NEWLINE] strings with an actual \n.
 // Number our q&a set too.
 function post_process_qa_set(qa_set) {
-  // Sometimes, we get [NEWLINE] in our qa_set, we just want \n.
-  qa_set = qa_set.replaceAll("[NEWLINE]", "\n");
   // Split the input string into lines
   const lines = qa_set.trim().split("\n");
 
@@ -151,8 +151,8 @@ async function checkTaskStatus(task_id, completedCallback, errorCallback) {
   }, 2000); // Check every 2 seconds (adjust this as needed)
 }
 
+// Send a GET request to the server and wait for a JSON response from the server.
 async function get_json2questions(filename, md5_name) {
-  // Send a GET request to the server and wait for the response
   console.log("Fetch generated q&a set from server:");
   const formData = new FormData();
   formData.append("filename", filename);
@@ -211,7 +211,7 @@ async function post_json2questions(filename, md5_name) {
   }
 }
 
-async function post_pdf2json(filename, md5_name) {
+async function post_pdf2json(filename, md5_name, completeCallback, errorCallback) {
   try {
     // Create a FormData object to send data with the POST request
     const formData = new FormData();
@@ -231,15 +231,8 @@ async function post_pdf2json(filename, md5_name) {
       // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
       checkTaskStatus(
         task_id,
-        () => {
-          console.log("pfd2json callback done: " + task_id + " | " + filename);
-          set_file_status(filename, md5_name, "Generating questions and answers...");
-          post_json2questions(filename, md5_name);
-        },
-        () => {
-          // The task was unsuccessful and an error occured! Tell that to the user..
-          set_file_status(filename, md5_name, "Error: A problem occured when generating text from PDF.");
-        },
+        () => completeCallback(task_id),
+        () => errorCallback(task_id),
       );
     } else {
       // Handle errors here
@@ -251,7 +244,7 @@ async function post_pdf2json(filename, md5_name) {
   }
 }
 
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
   files_cookie = Cookies.get("files");
   Cookies.remove("files");
 
@@ -343,6 +336,24 @@ window.addEventListener("load", () => {
     const filename = file_names[i];
     const md5_name = md5_names[i];
 
-    post_pdf2json(filename, md5_name);
+    await new Promise((resolve) => {
+      const completeCallback = (task_id) => {
+        console.log("pfd2json callback done: " + task_id + " | " + filename);
+        set_file_status(filename, md5_name, "Generating questions and answers...");
+        post_json2questions(filename, md5_name);
+        resolve();
+      };
+
+      const errorCallback = async (task_id) => {
+        console.log("PDF2JSON callback error:");
+        // The task was unsuccessful and an error occured! Tell that to the user..
+        set_file_status(filename, md5_name, "Error: A problem occured when generating text from PDF.");
+        await delay(3000);
+        i--;
+        resolve();
+      };
+
+      post_pdf2json(filename, md5_name, completeCallback, errorCallback);
+    });
   }
 });
