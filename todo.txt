@@ -1,0 +1,23 @@
+* DECEMBER *
+1. Rename REPO to PDF2Flashcards
+2. Fix [NEWLINE] ouput in PDF files.
+3. Implement keyword: definition feature.
+4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
+5. Implement export to cheatsheet feature (For keyword: definition feature)
+6. Support PPTX files.
+7. Add user accounts (google integration, ect.)
+8. Saved documents for user accounts
+* JANUARY *
+9. Limit document generation for users w/o account, along with "free" users.
+10. Add "premium features" (Export options, filetypes, filesize, unlimited conversions)
+11. Hire some dude on fiverr for CSS look & feel after implementing these features.
+12. Fix SEO for google.
+13. Write up report on potential costs of API vs. hardware.
+* FEBUARY *
+14. Create LLC
+15. Legal shit? User data, uploaded docs, ect.?
+16. Start marketing
+* MARCH *
+17. Create work email? @pdf2flashcards.com
+18. Shift payments to @pdf2flashcards.com
+19. Automate income/expenses from email onto google sheets: https://docs.google.com/spreadsheets/d/1vxsje0roJ4g_YpmBPFZC467zoVXOtJUPI0PY7keWLB0/edit#gid=0

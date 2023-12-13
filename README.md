@@ -1,4 +1,4 @@
-# PDF2Questions
+# PDF2Flashcards
 
 An AI web-app that scans PDFs and generates associated questions and answers.
 
@@ -30,7 +30,7 @@ An AI web-app that scans PDFs and generates associated questions and answers.
 ## Build Instructions
 
 1. Install Docker, VSCode, Git, and Python3
-2. Clone the repository using `git clone https://github.com/RyanGrieb/PDF2Questions.git` in the terminal
+2. Clone the repository using `git clone https://github.com/RyanGrieb/PDF2Flashcards.git` in the terminal
 3. `cd` into the cloned repository.
 4. `cd` into the `./backend` file, and run `pip install -r requirements.txt` (You might need to restart VSCode for the imports to load properly)
 5. Go back to the parent directory, `cd ..`

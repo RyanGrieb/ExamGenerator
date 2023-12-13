@@ -35,16 +35,12 @@ def get_logger_for_file(server: Quart, md5_name: str) -> logging.Logger:
     logger.addHandler(logger_file)
 
     if new_logger:
-        logger.info(
-            "================================= BEGINNING OF LOGGING SESSION ================================="
-        )
+        logger.info("================================= BEGINNING OF LOGGING SESSION =================================")
 
     return logger
 
 
-def truncate2gpt_tokens(
-    server: Quart, md5_name: str, pdf_text: str, just_split_pages=False
-):
+def truncate2gpt_tokens(server: Quart, md5_name: str, pdf_text: str, just_split_pages=False):
     """
     Given a pdf_text string (Has the formatted page numbers), return a list of text under the 4096 token limit for chat-gpt
     """
@@ -155,18 +151,13 @@ def json2text(server: Quart, md5_name: str):
             if index == len(truncated_json_data) - 1 and item_text.isdigit():
                 numbers_on_page.append(json_item)
 
-            if (
-                item_page_number != current_page
-                or index == len(truncated_json_data) - 1
-            ):
+            if item_page_number != current_page or index == len(truncated_json_data) - 1:
                 current_page = item_page_number
 
                 # Compare prev_numbers_on_page w/ numbers_on_page, if we see a +1 increment b/w them, append both to page_number_json_items
                 for prev_json_digit_item in prev_numbers_on_page:
                     for json_digit_item in numbers_on_page:
-                        if int(json_digit_item["text"]) - 1 == int(
-                            prev_json_digit_item["text"]
-                        ):
+                        if int(json_digit_item["text"]) - 1 == int(prev_json_digit_item["text"]):
                             if prev_json_digit_item not in page_number_json_items:
                                 page_number_json_items.append(prev_json_digit_item)
                             if json_digit_item not in page_number_json_items:
@@ -179,20 +170,12 @@ def json2text(server: Quart, md5_name: str):
             if item_text.isdigit():
                 numbers_on_page.append(json_item)
 
-        logger.debug(
-            f"Page number elements found (and to remove): {len(page_number_json_items)}"
-        )
-        logger.debug(
-            f"Removing page #'s: Length of BEFORE json_data: {len(truncated_json_data)}"
-        )
+        logger.debug(f"Page number elements found (and to remove): {len(page_number_json_items)}")
+        logger.debug(f"Removing page #'s: Length of BEFORE json_data: {len(truncated_json_data)}")
         truncated_json_data = [
-            json_item
-            for json_item in truncated_json_data
-            if json_item not in page_number_json_items
+            json_item for json_item in truncated_json_data if json_item not in page_number_json_items
         ]
-        logger.debug(
-            f"Removing page #'s:  Length of AFTER json_data: {len(truncated_json_data)}"
-        )
+        logger.debug(f"Removing page #'s:  Length of AFTER json_data: {len(truncated_json_data)}")
 
         # 3.  Generate formatted text from our pre-processed json-elements
         formatted_text = ""
@@ -230,7 +213,7 @@ async def gpt_generate_qa(server, md5_name, data):
     print(f"*********************** Generate Q&A from text chunk:\n{data}")
     logger.debug(f"*********************** Generate Q&A from text chunk:\n{data}")
 
-    prompt = f"Generate clever Q&A flashcards each page from the following UNORDERED tokens. Make sure to cleverly answer the question generated. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
+    prompt = f"Generate brief, clever Q&A flashcards each page from the following UNORDERED tokens. Generate very short questions and answers, as these are meant to be flashcards. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
@@ -241,6 +224,7 @@ async def gpt_generate_qa(server, md5_name, data):
         temperature=0,
     )
     response_data: str = response["choices"][0]["message"]["content"]
+
     print("*********************** GPT Q&A RESPONSE DATA:")
     logger.debug("*********************** GPT Q&A RESPONSE DATA:")
 
@@ -319,9 +303,7 @@ async def async_pdf2json(
         headers = {"accept": "application/json"}
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                server.config["UNSTRUCTUED_API_URL"], headers=headers, data=form_data
-            ) as response:
+            async with session.post(server.config["UNSTRUCTUED_API_URL"], headers=headers, data=form_data) as response:
                 if response.status == 200:
                     response_text = await response.text()
                     # TODO: Implement a keep-alive loop & cancel these post requests if terminated.
@@ -331,9 +313,7 @@ async def async_pdf2json(
                     if not os.path.exists(server.config["JSON_FOLDER"]):
                         os.makedirs(server.config["JSON_FOLDER"])
 
-                    with open(
-                        f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w"
-                    ) as file:
+                    with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w") as file:
                         file.write(response_text)
 
                     task_status[task_id] = "completed"
@@ -349,9 +329,7 @@ async def async_pdf2json(
         task_status[task_id] = "error"
 
 
-async def async_json2questions(
-    server: Quart, task_status, filename: str, md5_name: str, task_id: str
-):
+async def async_json2questions(server: Quart, task_status, filename: str, md5_name: str, task_id: str):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: async_json2questions")
 
@@ -368,9 +346,7 @@ async def async_json2questions(
         logger.debug("JSON text (converted from JSON): ")
         logger.debug(pdf_text)
 
-        truncated_pdf_text = truncate2gpt_tokens(
-            server, md5_name, pdf_text, just_split_pages=False
-        )
+        truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
         logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
         generated_qa = []
