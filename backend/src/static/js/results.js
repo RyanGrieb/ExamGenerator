@@ -1,31 +1,83 @@
+class FileData {
+  constructor(filename, md5_name, data_type, data) {
+    this.filename = filename;
+    this.md5_name = md5_name;
+    this.data_type = data_type;
+    this.data = data;
+  }
+}
+
+//FIXME: We may be able to merge this variables.
 var file_names = [];
 var md5_names = [];
+var files_data = {};
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+async function display_file_data(md5_name) {
+  const file_data = files_data[md5_name];
+  const results_output = document.querySelector(".results-output");
+
+  if (!file_data) {
+    return;
+  }
+
+  results_output.innerHTML = "";
+
+  if (file_data.data_type == "qa") {
+    try {
+      // Fetch the flashcard HTML
+      const response = await fetch("/flashcard"); // Update with the correct endpoint
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      const flashcardHTML = await response.text();
+
+      // Append the fetched flashcard HTML to qaSetDiv
+      const flashcardDiv = document.createElement("div");
+      flashcardDiv.style = "display: flex; justify-content: center;";
+      flashcardDiv.innerHTML = flashcardHTML;
+      results_output.appendChild(flashcardDiv);
+      set_flashcard(file_data, 0, 0);
+
+      // Construct Q&A sets
+      const qa_sets_div = document.createElement("div");
+      for (const qa_set of file_data.data) {
+        const p_element = document.createElement("p");
+        p_element.innerHTML = `${qa_set[0]} | ${qa_set[1]}`;
+        qa_sets_div.appendChild(p_element);
+      }
+      results_output.appendChild(qa_sets_div);
+    } catch (error) {
+      console.error("There was a problem fetching the flashcard HTML:", error);
+    }
+  }
+}
+
+function set_flashcard(file_data, side, page) {
+  // Set flashcard title
+  const flashcard_text = file_data.data[page][side];
+  const total_pages = file_data.data.length;
+  document.querySelector(".flashcard-text p").innerHTML = flashcard_text;
+  // Set flashcard page
+  document.querySelector(".flashcard-count p").innerHTML = `${page + 1} / ${total_pages}`;
+  // Map buttons to naviagate pages, if not defined already.
+  document.querySelector(".flashcard-forward").onclick = () => {
+    set_flashcard(file_data, 0, Math.min(page + 1, total_pages - 1));
+  };
+  document.querySelector(".flashcard-back").onclick = () => {
+    set_flashcard(file_data, 0, Math.max(page - 1, 0));
+  };
+  document.querySelector(".flashcard-flip").onclick = () => {
+    set_flashcard(file_data, side == 0 ? 1 : 0, page);
+  };
+}
 
 function get_logs(md5_name) {
   console.log("Getting logs for " + md5_name);
   window.open(`/logs/${md5_name}`);
-}
-
-function set_file_status(filename, md5_name, status) {
-  p_element = document.querySelector(`#converting-status-${md5_name}`);
-  p_element.textContent = status;
-
-  loading_element = document.querySelector(`#loader-${md5_name}`);
-  qa_set_title = document.querySelector(`#qa-set-title-${md5_name}`);
-
-  // Remove loading element if status is 'Finshed.'
-  if (status === "Finished.") {
-    loading_element.classList.remove("loader");
-    loading_element.classList.add("checkmark-done");
-    qa_set_title.innerHTML = `<b>${filename}</b> - Generated Q&A Set:`;
-  } else if (status === "Error.") {
-    loading_element.classList.remove("loader");
-    loading_element.classList.add("warn");
-    loading_element.classList.add("warning");
-    qa_set_title.innerHTML = `<b>${filename}</b> - Error occured during generation.`;
-  }
 }
 
 function add_qa_set_to_page(filename, md5_name, qa_set, final_generation = false) {
@@ -97,7 +149,7 @@ async function post_export_results(file_names, md5_names, export_type) {
 
 // Make our q&a set look prettier. Remove any empty answers, and format [NEWLINE] strings with an actual \n.
 // Number our q&a set too.
-function post_process_qa_set(qa_set) {
+function deprecated_post_process_qa_set(qa_set) {
   // Split the input string into lines
   const lines = qa_set.trim().split("\n");
 
@@ -152,7 +204,7 @@ async function checkTaskStatus(task_id, completedCallback, errorCallback) {
 }
 
 // Send a GET request to the server and wait for a JSON response from the server.
-async function get_json2questions(filename, md5_name) {
+async function get_qa_set(filename, md5_name) {
   console.log("Fetch generated q&a set from server:");
   const formData = new FormData();
   formData.append("filename", filename);
@@ -164,13 +216,15 @@ async function get_json2questions(filename, md5_name) {
 
   if (response.ok) {
     // Print the plaintext string here:
-    let qa_set = await response.text(); // Extract the plaintext content
-    qa_set = post_process_qa_set(qa_set);
-    add_qa_set_to_page(filename, md5_name, qa_set);
+    let qa_sets_json = JSON.parse(await response.text());
+    console.log(qa_sets_json);
+    files_data[md5_name] = new FileData(filename, md5_name, "qa", qa_sets_json);
+    //add_flashcards_to_page(filename, md5_name, qa_sets_json);
+    //add_qa_set_to_page(filename, md5_name, qa_set);
   }
 }
 
-async function post_json2questions(filename, md5_name) {
+async function post_generate_qa_set(filename, md5_name) {
   try {
     // Create a FormData object to send data with the POST request
     const formData = new FormData();
@@ -194,7 +248,7 @@ async function post_json2questions(filename, md5_name) {
           // The task was successful, lets get the generated questions!
           console.log("JSON2Questions callback done: " + task_id + " | " + filename);
           // Send a GET request for the questions generated server-side
-          get_json2questions(filename, md5_name);
+          get_qa_set(filename, md5_name);
         },
         () => {
           // The task was unsuccessful and an error occured! Tell that to the user..
@@ -246,11 +300,12 @@ async function post_pdf2json(filename, md5_name, completeCallback, errorCallback
 
 window.addEventListener("load", async () => {
   files_cookie = Cookies.get("files");
-  Cookies.remove("files");
+
+  if (!files_cookie) {
+    return;
+  }
 
   const files = JSON.parse(files_cookie);
-
-  console.log(files);
 
   for (const file_json of files) {
     file_names.push(file_json["file_name"]);
@@ -264,74 +319,21 @@ window.addEventListener("load", async () => {
   // Populate HTML with the associated files
 
   for (let i = 0; i < file_names.length; i++) {
+    // Iterate through all files string array, send a post request to our server at /pdf-to-text
+    // Include the filename & md5_name of the file
+    // Iterate through the file names and send a POST request for each file
     const filename = file_names[i];
     const md5_name = md5_names[i];
-
-    // ============== Create converting-files-list (li) elements ==============
-    const converting_files_list = document.getElementById("converting-files-list");
-
-    const file_list_elem = document.createElement("li");
-    file_list_elem.id = `file-list-elm-${md5_name}`;
-
-    // Create the loader div, b, p elements
-    const div = document.createElement("div");
-    div.id = `loader-${md5_name}`;
-    div.className = "loader";
-
-    const b = document.createElement("b");
-    b.textContent = filename;
-
-    const p = document.createElement("p");
-    p.id = `converting-status-${md5_name}`;
-    p.textContent = "Converting to text...";
-
-    // Append the elements to file_list_elem
-    file_list_elem.appendChild(div);
-    file_list_elem.appendChild(b);
-    file_list_elem.appendChild(document.createTextNode(" - "));
-    file_list_elem.appendChild(p);
-
-    // Add a view logs button to the first_list_elem
-    const viewLogsBtn = document.createElement("button");
-    viewLogsBtn.innerHTML = "View logs";
-    viewLogsBtn.onclick = () => {
-      get_logs(md5_name);
+    const file_list = document.querySelector(".results-files ul");
+    const list_item = document.createElement("li");
+    list_item.id = md5_name;
+    list_item.innerHTML = filename;
+    list_item.onclick = () => {
+      display_file_data(md5_name);
     };
-    file_list_elem.appendChild(viewLogsBtn);
-
-    converting_files_list.appendChild(file_list_elem);
-
-    // ============== Create qa-set elements (div) ==============
-    const qaSetsDiv = document.querySelector(".qa-sets");
-
-    // Create the qa-set div
-    const qaSetDiv = document.createElement("div");
-    qaSetDiv.id = `qa-set-${md5_name}`;
-    qaSetDiv.className = "qa-set";
-
-    // Create the qa-set-title paragraph
-    const qaSetTitleParagraph = document.createElement("p");
-    qaSetTitleParagraph.id = `qa-set-title-${md5_name}`;
-    qaSetTitleParagraph.className = "qa-set-title";
-
-    // Create the b element
-    const bElement = document.createElement("b");
-    bElement.textContent = filename;
-
-    // Set the text content of the paragraph
-    qaSetTitleParagraph.appendChild(bElement);
-    qaSetTitleParagraph.appendChild(document.createTextNode(" - Processing...."));
-
-    // Append the paragraph to the qa-set div
-    qaSetDiv.appendChild(qaSetTitleParagraph);
-
-    // Append the qa-set div to the qa-sets div
-    qaSetsDiv.appendChild(qaSetDiv);
+    file_list.appendChild(list_item);
   }
 
-  // Iterate through all files string array, send a post request to our server at /pdf-to-text
-  // Include the filename & md5_name of the file
-  // Iterate through the file names and send a POST request for each file
   for (let i = 0; i < file_names.length; i++) {
     const filename = file_names[i];
     const md5_name = md5_names[i];
@@ -339,15 +341,13 @@ window.addEventListener("load", async () => {
     await new Promise((resolve) => {
       const completeCallback = (task_id) => {
         console.log("pfd2json callback done: " + task_id + " | " + filename);
-        set_file_status(filename, md5_name, "Generating questions and answers...");
-        post_json2questions(filename, md5_name);
+        post_generate_qa_set(filename, md5_name);
         resolve();
       };
 
       const errorCallback = async (task_id) => {
         console.log("PDF2JSON callback error:");
         // The task was unsuccessful and an error occured! Tell that to the user..
-        set_file_status(filename, md5_name, "Error: A problem occured when generating text from PDF.");
         await delay(3000);
         i--;
         resolve();

@@ -12,10 +12,10 @@ from werkzeug.utils import secure_filename
 
 UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
 OPENAI_API_KEY = "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"
-UPLOAD_FOLDER = "./data/pdf-uploads"
-JSON_FOLDER = "./data/pdf-json"
-QA_FOLDER = "./data/pdf-qa"
-LOG_FOLDER = "./data/pdf-logs"
+UPLOAD_FOLDER = "./data/file-upload"
+JSON_FOLDER = "./data/file-json"
+PROCESSED_FOLDER = "./data/file-processed"
+LOG_FOLDER = "./data/file-log"
 EXPORT_FOLDER = "./data/exports"
 ALLOWED_EXTENSIONS = {"pdf"}
 
@@ -24,7 +24,7 @@ server = Quart(__name__)
 server.config["UNSTRUCTUED_API_URL"] = UNSTRUCTUED_API_URL
 server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 server.config["JSON_FOLDER"] = JSON_FOLDER
-server.config["QA_FOLDER"] = QA_FOLDER
+server.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
 server.config["LOG_FOLDER"] = LOG_FOLDER
 server.config["EXPORT_FOLDER"] = EXPORT_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
@@ -34,7 +34,7 @@ server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 # server.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
 conn = None
 
-#FIXME: Prevent duplicate tasks based on task type and file hash.
+# FIXME: Prevent duplicate tasks based on task type and file hash.
 task_status = {}
 
 # Configure OpenAI GPT
@@ -115,11 +115,21 @@ async def help():
     return await render_template("help.html", last_updated=dir_last_updated("./src/static"))
 
 
+@server.route("/flashcard_test", methods=["GET"])
+async def flashcard_test():
+    return await render_template("flashcard_test.html", last_updated=dir_last_updated("./src/static"))
+
+
+@server.route("/flashcard", methods=["GET"])
+async def flashcard():
+    return await render_template("flashcard.html", last_updated=dir_last_updated("./src/static"))
+
+
 # Get the Q&A set of the associated file.
 @server.route("/pdf-qa/<md5_name>", methods=["GET"])
 def get_pdf_qa(md5_name):
-    with open(f'{server.config["QA_FOLDER"]}/{md5_name}.txt', "r") as file:
-        return file.read()
+    with open(f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json', "r") as file:
+        return json.load(file)["qa_set"]
 
 
 # Get the logs of the associated file.

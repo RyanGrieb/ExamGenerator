@@ -67,10 +67,6 @@ p {
   font-size: 130%;
 }
 
-#status-div {
-  padding-top: 10px;
-}
-
 #toc-container {
   margin: auto;
   margin-top: 30px;
@@ -357,6 +353,160 @@ input[type="submit"] {
   width: 12px;
   border-bottom: 7px solid #78b13f;
   border-right: 7px solid #78b13f;
+}
+
+.flashcard {
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  width: 500px;
+  height: 300px;
+  margin: 4px;
+  border: 1px solid black;
+  align-self: center;
+}
+
+.flashcard-child {
+  flex: 1;
+  display: flex;
+}
+
+.flashcard-arrow-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 4px;
+  width: 42px;
+  height: 42px;
+  background-color: #dbd8d8;
+  flex-shrink: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.flashcard-top {
+  position: relative;
+}
+
+.flashcard-flip {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+
+  border-radius: 10px;
+
+  margin: 4px;
+  width: 42px;
+  height: 42px;
+
+  background-color: #dbd8d8;
+
+  position: absolute;
+  top: 0;
+  right: 0;
+
+  cursor: pointer;
+}
+
+.flashcard-flip img {
+  flex-shrink: 0;
+  width: 42px;
+  height: 52px;
+}
+
+.flashcard-middle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+}
+
+.flashcard-bottom {
+  position: relative;
+}
+
+.flashcard-count {
+  position: absolute;
+  bottom: 0;
+  left: 50%; /* Moves the left edge of the footer to the center */
+  transform: translateX(-50%); /* Centers the footer element */
+}
+
+.flashcard-bottom p {
+  margin: 0;
+}
+
+.flashcard-text {
+}
+
+.flashcard-count {
+}
+
+.arrow {
+  border: solid black;
+  border-width: 0 6px 6px 0;
+  display: inline-block;
+  padding: 6px;
+}
+
+.right {
+  transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+}
+
+.left {
+  transform: rotate(135deg);
+  -webkit-transform: rotate(135deg);
+}
+
+.results-layout {
+  margin-top: 10px;
+  display: flex;
+  border: 1px solid black;
+}
+
+.results-files {
+  border: 1px solid black;
+  flex-grow: 0; /* do not grow   - initial value: 0 */
+  flex-shrink: 0; /* do not shrink - initial value: 1 */
+  flex-basis: 20em; /* width/height  - initial value: auto */
+  padding: 4px;
+}
+
+.results-files ul {
+  list-style: none;
+  padding: 4px;
+}
+
+.results-files li:last-child {
+  border-bottom: 1px solid black;
+}
+
+.results-files li:hover {
+  background-color: #a6d8b2;
+}
+
+.results-files li {
+  cursor: pointer;
+  border-top: 1px solid black;
+  border-left: 1px solid black;
+  border-right: 1px solid black;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  padding-left: 4px;
+  background-color: white;
+}
+
+.results-output {
+  flex-grow: 1;
+}
+
+.reasults-files-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
 }
 
 /* The typing effect */

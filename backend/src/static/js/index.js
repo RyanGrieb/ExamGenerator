@@ -1,4 +1,3 @@
-Cookies.remove("files");
 let totalFilesUploaded = 0;
 
 function dropHandler(event) {
@@ -78,12 +77,26 @@ function upload_file(file) {
       const response_md5_name = this.response["md5_name"];
       fileNameLi.textContent = `${fileName} - 100%`;
 
+      let existing_cookie = false;
+      files_cookie = Cookies.get("files");
+      if (files_cookie) {
+        const files = JSON.parse(files_cookie);
+        for (const file_json of files) {
+          if (file_json["md5_name"] == response_md5_name) {
+            existing_cookie = true;
+          }
+        }
+      }
+
       // Create an object to store your data
       const file_json = {
         file_name: response_file_name,
         md5_name: response_md5_name,
       };
-      add_to_list_cookie("files", file_json);
+
+      if (!existing_cookie) {
+        add_to_list_cookie("files", file_json);
+      }
 
       totalFilesUploaded++;
       //console.log(`${totalFilesUploaded} - ${fileList.getElementsByTagName("li").length}`)

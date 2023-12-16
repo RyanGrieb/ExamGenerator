@@ -1,26 +1,19 @@
 {% extends 'base.html' %}
 {% block head %}
 <script src="{{ url_for('static',filename='js/results.js') }}?u={{ last_updated }}"></script>
-<script>
-    if (Cookies.get("files") === undefined) {
-        window.location.href = "/";
-    }
-</script>
 {% endblock %}
 {% block body %}
 
-<div>
-    <div id="status-div">
-        <button class="button-1" onclick="on_export_click()">Export Results</button>
-        <p class="status-text">Converting the following files, please wait...</p>
-    </div>
-    <div class="converting-div">
-        <ul id="converting-files-list">
+<div class="results-layout">
+    <div class="results-files">
+        <div class="reasults-files-header">
+            <h2>Documents</h2>
+            <button class="button-1">Export</button>
+        </div>
+        <ul>
         </ul>
     </div>
-    <div class="qa-sets">
-
-    </div>
+    <div class="results-output"></div>
 </div>
 
 {% endblock %}

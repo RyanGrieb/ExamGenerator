@@ -241,9 +241,11 @@ async def gpt_generate_qa(server, md5_name, data):
     qa_sets = [qa_set for qa_set in qa_sets if qa_set != ""]
 
     if len(qa_sets) % 2 != 0:
-        print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a)!!!")
+        print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a, or additional output.)!!!")
         logger.warn("UNEVEN Q&A RESPONSE (mssing q or a)!!")
-        return qa_sets
+
+    # Remove any lines not containing Q: or A:.
+    qa_sets = [line for line in qa_sets if "Q:" in line or "A:" in line]
 
     # Remove duplicate Q&A in list (Q & A Must both be the same between duplicate pairs)
     new_qa_sets = []
@@ -258,8 +260,7 @@ async def gpt_generate_qa(server, md5_name, data):
         if question in existing_questions and answer in existing_answers:
             continue
 
-        new_qa_sets.append(question)
-        new_qa_sets.append(answer)
+        new_qa_sets.append([question, answer])
         existing_questions.append(question)
         existing_answers.append(answer)
 
@@ -339,9 +340,10 @@ async def async_json2questions(server: Quart, task_status, filename: str, md5_na
     logger.info("Function: async_json2questions")
 
     try:
-        qa_filepath = f'{server.config["QA_FOLDER"]}/{md5_name}.txt'
-        # Check if file already exists, if so, set the task status as completed
-        if os.path.isfile(qa_filepath):
+        processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
+        # Check if file already exists and q&a for it was generated, if so, set the task status as completed
+        if os.path.isfile(processed_file):
+            # FIXME: GET JSON from processed_file
             logger.debug(f"Q&A already exists for {filename}, returning...")
             task_status[task_id] = "completed"
             return
@@ -361,24 +363,29 @@ async def async_json2questions(server: Quart, task_status, filename: str, md5_na
                 continue
             generated_qa = generated_qa + qa
 
-        qa_text = ""
-        for qa_line in generated_qa:
-            qa_text += f"{qa_line}\n"
-
+        processed_json = {}
         # Save Q&A set to filesystem
-        # Create /pdf-qa directory if it doesn't exist.
-        if not os.path.exists(server.config["QA_FOLDER"]):
-            os.makedirs(server.config["QA_FOLDER"])
+        # Create directory if it doesn't exist.
+        if not os.path.exists(server.config["PROCESSED_FOLDER"]):
+            os.makedirs(server.config["PROCESSED_FOLDER"])
 
-        with open(qa_filepath, "w") as file:
-            file.write(qa_text)
+        # Load any existing json data from our file, if present.
+        if os.path.isfile(processed_file):
+            with open(processed_file, "r") as file:
+                processed_json = json.load(file)
+
+        processed_json["qa_set"] = generated_qa
+
+        with open(processed_file, "w") as file:
+            json.dump(processed_json, file)
 
         task_status[task_id] = "completed"
         logger.debug("Q&A Generation Successful.")
 
     except Exception as e:
-        print("Error:", str(e), file=sys.stderr)
-        logger.error(str(e))
+        error_message = f"Error: {str(e)} at line {traceback.tb_lineno}"
+        print(error_message, file=sys.stderr)
+        logger.error(error_message)
         logger.error(traceback.format_exc())
         task_status[task_id] = "error"
 
