@@ -1,20 +1,19 @@
 class FileData {
-  constructor(filename, md5_name, data_type, data) {
+  constructor(filename, md5_name, conversion_types, conversion_options) {
     this.filename = filename;
     this.md5_name = md5_name;
-    this.data_type = data_type;
-    this.data = data;
+    this.conversion_types = conversion_types;
+    this.conversion_options = conversion_options; //Dictonary
+    this.data = {};
   }
 }
 
-//FIXME: We may be able to merge this variables.
-var file_names = [];
-var md5_names = [];
-var files_data = {};
+let md5_files = [];
+let files_data = {};
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-async function display_file_data(md5_name) {
+async function display_file_data(filename, md5_name, conversion_type) {
   const file_data = files_data[md5_name];
   const results_output = document.querySelector(".results-output");
 
@@ -24,7 +23,26 @@ async function display_file_data(md5_name) {
 
   results_output.innerHTML = "";
 
-  if (file_data.data_type == "qa") {
+  const title_elem = document.createElement("h2");
+
+  if (conversion_type == "keywords") {
+    title_elem.innerHTML = `${filename} Keyword/Definition Pair:`;
+    results_output.appendChild(title_elem);
+
+    // Construct Keyword/Definition pairs
+    const keywords_sets_div = document.createElement("div");
+    for (const keyword_set of file_data.data[conversion_type]) {
+      const p_element = document.createElement("p");
+      p_element.innerHTML = `<u>${keyword_set[0]}</u>: ${keyword_set[1]}`;
+      keywords_sets_div.appendChild(p_element);
+    }
+    results_output.appendChild(keywords_sets_div);
+  }
+
+  if (conversion_type == "flashcards") {
+    title_elem.innerHTML = `${filename} Flashcard Set:`;
+    results_output.appendChild(title_elem);
+
     try {
       // Fetch the flashcard HTML
       const response = await fetch("/flashcard"); // Update with the correct endpoint
@@ -44,7 +62,7 @@ async function display_file_data(md5_name) {
 
       // Construct Q&A sets
       const qa_sets_div = document.createElement("div");
-      for (const qa_set of file_data.data) {
+      for (const qa_set of file_data.data["flashcards"]) {
         const p_element = document.createElement("p");
         p_element.innerHTML = `${qa_set[0]} | ${qa_set[1]}`;
         qa_sets_div.appendChild(p_element);
@@ -58,8 +76,8 @@ async function display_file_data(md5_name) {
 
 function set_flashcard(file_data, side, page) {
   // Set flashcard title
-  const flashcard_text = file_data.data[page][side];
-  const total_pages = file_data.data.length;
+  const flashcard_text = file_data.data["flashcards"][page][side];
+  const total_pages = file_data.data["flashcards"].length;
   document.querySelector(".flashcard-text p").innerHTML = flashcard_text;
   // Set flashcard page
   document.querySelector(".flashcard-count p").innerHTML = `${page + 1} / ${total_pages}`;
@@ -82,7 +100,6 @@ function get_logs(md5_name) {
 
 function add_qa_set_to_page(filename, md5_name, qa_set, final_generation = false) {
   const qaSetDiv = document.querySelector(`#qa-set-${md5_name}`);
-  set_file_status(filename, md5_name, "Finished.");
 
   document.querySelector(".status-text").innerHTML = "Generated Q&As:";
 
@@ -203,36 +220,42 @@ async function checkTaskStatus(task_id, completedCallback, errorCallback) {
   }, 2000); // Check every 2 seconds (adjust this as needed)
 }
 
-// Send a GET request to the server and wait for a JSON response from the server.
-async function get_qa_set(filename, md5_name) {
-  console.log("Fetch generated q&a set from server:");
-  const formData = new FormData();
-  formData.append("filename", filename);
-  formData.append("md5_name", md5_name);
+async function get_converted_file(file_data, conversion_type) {
+  console.log("Fetch generated file set from server:");
 
-  const response = await fetch(`/pdf-qa/${md5_name}`, {
+  const params = new URLSearchParams({
+    filename: file_data.filename,
+    md5_name: file_data.md5_name,
+    conversion_type: conversion_type,
+  });
+  const url = `/convertfile/?${params}`;
+  console.log(url);
+  const response = await fetch(url, {
     method: "GET",
   });
 
   if (response.ok) {
     // Print the plaintext string here:
-    let qa_sets_json = JSON.parse(await response.text());
-    console.log(qa_sets_json);
-    files_data[md5_name] = new FileData(filename, md5_name, "qa", qa_sets_json);
-    //add_flashcards_to_page(filename, md5_name, qa_sets_json);
-    //add_qa_set_to_page(filename, md5_name, qa_set);
+    let json_data = JSON.parse(await response.text());
+    console.log(json_data);
+    file_data.data[conversion_type] = json_data;
+    set_file_status(file_data.md5_name, conversion_type, "checkmark-done");
   }
 }
 
-async function post_generate_qa_set(filename, md5_name) {
+// Convert the file to flashcards, keyword/definition, test questions, ect.
+async function post_convert_file(file_data, conversion_type, conversion_options, completeCallback, errorCallback) {
+  console.log("POST: Convert file to:" + conversion_type);
   try {
     // Create a FormData object to send data with the POST request
     const formData = new FormData();
-    formData.append("filename", filename);
-    formData.append("md5_name", md5_name);
+    formData.append("filename", file_data.filename);
+    formData.append("md5_name", file_data.md5_name);
+    formData.append("conversion_type", conversion_type);
+    formData.append("conversion_options", conversion_options);
 
     // Send a POST request to the server and wait for the response
-    const response = await fetch("/json2questions", {
+    const response = await fetch("/convertfile", {
       method: "POST",
       body: formData,
     });
@@ -241,61 +264,32 @@ async function post_generate_qa_set(filename, md5_name) {
       const responseData = await response.json();
       const task_id = responseData.task_id;
 
-      // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
-      checkTaskStatus(
-        task_id,
-        () => {
-          // The task was successful, lets get the generated questions!
-          console.log("JSON2Questions callback done: " + task_id + " | " + filename);
-          // Send a GET request for the questions generated server-side
-          get_qa_set(filename, md5_name);
-        },
-        () => {
-          // The task was unsuccessful and an error occured! Tell that to the user..
-          set_file_status(filename, md5_name, "Error: A problem occured when generating questions.");
-        },
-      );
-    } else {
-      // Handle network or other errors here
-      console.error(`Error sending ${filename} to the server: ${error}`);
-    }
-  } catch (error) {
-    // Handle network or other errors here
-    console.error(`Error sending ${filename} to the server: ${error}`);
-  }
-}
-
-async function post_pdf2json(filename, md5_name, completeCallback, errorCallback) {
-  try {
-    // Create a FormData object to send data with the POST request
-    const formData = new FormData();
-    formData.append("filename", filename);
-    formData.append("md5_name", md5_name);
-
-    // Send a POST request to the server and wait for the response
-    const response = await fetch("/pdf2json", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (response.ok) {
-      const responseData = await response.json();
-      const task_id = responseData.task_id;
-
-      // Send a task_status get request every 5-10 seconds until complete. (Timeout at 5 mins?)
       checkTaskStatus(
         task_id,
         () => completeCallback(task_id),
         () => errorCallback(task_id),
       );
     } else {
-      // Handle errors here
-      console.error(`Error sending ${filename} to the server.`);
+      // Handle network or other errors here
+      console.error(`Error sending ${file_data.filename} to the server: ${error}`);
     }
   } catch (error) {
     // Handle network or other errors here
-    console.error(`Error sending ${filename} to the server: ${error}`);
+    console.error(`Error sending ${file_data.filename} to the server: ${error}`);
   }
+}
+
+function set_file_status(md5_name, conversion_type, iconName) {
+  const list_element = document.getElementById(`li-${md5_name}-${conversion_type}`);
+
+  //Remove existing <i> elements
+  const existing_i_elem = list_element.querySelector("i");
+  if (existing_i_elem) list_element.removeChild(existing_i_elem);
+
+  const loader = document.createElement("i");
+  loader.className = iconName;
+  loader.id = md5_name;
+  list_element.appendChild(loader);
 }
 
 window.addEventListener("load", async () => {
@@ -305,43 +299,69 @@ window.addEventListener("load", async () => {
     return;
   }
 
-  const files = JSON.parse(files_cookie);
-
-  for (const file_json of files) {
-    file_names.push(file_json["file_name"]);
-    md5_names.push(file_json["md5_name"]);
+  for (const file_json of JSON.parse(files_cookie)) {
+    files_data[file_json["md5_name"]] = new FileData(
+      file_json["file_name"],
+      file_json["md5_name"],
+      file_json["conversion_types"],
+      file_json["conversion_options"],
+    );
+    md5_files.push(file_json["md5_name"]);
   }
-
-  // Test output to see if our variables got initalized (they usually are)
-  console.log(file_names);
-  console.log(md5_names);
 
   // Populate HTML with the associated files
 
-  for (let i = 0; i < file_names.length; i++) {
+  for (let i = 0; i < md5_files.length; i++) {
     // Iterate through all files string array, send a post request to our server at /pdf-to-text
     // Include the filename & md5_name of the file
     // Iterate through the file names and send a POST request for each file
-    const filename = file_names[i];
-    const md5_name = md5_names[i];
-    const file_list = document.querySelector(".results-files ul");
-    const list_item = document.createElement("li");
-    list_item.id = md5_name;
-    list_item.innerHTML = filename;
-    list_item.onclick = () => {
-      display_file_data(md5_name);
-    };
-    file_list.appendChild(list_item);
+    const md5_name = md5_files[i];
+    const filename = files_data[md5_name].filename;
+    for (const conversion_type of files_data[md5_name].conversion_types) {
+      const file_list = document.querySelector(`.results-${conversion_type} ul`);
+
+      const file_p = document.createElement("p");
+      file_p.innerHTML = filename;
+
+      const list_item = document.createElement("li");
+      list_item.id = `li-${md5_name}-${conversion_type}`;
+      list_item.appendChild(file_p);
+
+      list_item.onclick = () => {
+        display_file_data(filename, md5_name, conversion_type);
+      };
+      file_list.appendChild(list_item);
+
+      set_file_status(md5_name, conversion_type, "loader");
+    }
   }
 
-  for (let i = 0; i < file_names.length; i++) {
-    const filename = file_names[i];
-    const md5_name = md5_names[i];
+  //TODO: Check our existing conversion_types with GET, to speed up files that might already be processed.
+
+  for (let i = 0; i < md5_files.length; i++) {
+    const md5_name = md5_files[i];
+    const file_data = files_data[md5_name];
 
     await new Promise((resolve) => {
       const completeCallback = (task_id) => {
-        console.log("pfd2json callback done: " + task_id + " | " + filename);
-        post_generate_qa_set(filename, md5_name);
+        console.log("pfd2text callback done: " + task_id + " | " + file_data.filename);
+
+        for (const conversion_type of files_data[md5_name].conversion_types) {
+          post_convert_file(
+            file_data,
+            conversion_type,
+            file_data.conversion_options,
+            () => {
+              //Completion callback
+              console.log("Completed file conversion");
+              get_converted_file(file_data, conversion_type);
+            },
+            () => {
+              //Error callback
+              console.log("Error occurred when converting file");
+            },
+          );
+        }
         resolve();
       };
 
@@ -353,7 +373,7 @@ window.addEventListener("load", async () => {
         resolve();
       };
 
-      post_pdf2json(filename, md5_name, completeCallback, errorCallback);
+      post_convert_file(file_data, "text", [], completeCallback, errorCallback);
     });
   }
 });

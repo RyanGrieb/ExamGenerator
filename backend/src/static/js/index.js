@@ -1,4 +1,12 @@
+class UploadedFile {
+  constructor(filename, md5_name) {
+    this.filename = filename;
+    this.md5_name = md5_name;
+  }
+}
+
 let totalFilesUploaded = 0;
+let uploaded_files = [];
 
 function dropHandler(event) {
   event.preventDefault();
@@ -47,7 +55,8 @@ function upload_file(file) {
   }
 
   // Hide the convert button again, since were waiting on documents to upload:
-  convertButton.style.display = "none";
+  convertButton.classList.remove("button-1");
+  convertButton.classList.add("button-1-disabled");
 
   // Create an li element for each file
   const fileNameLi = document.createElement("li");
@@ -77,32 +86,16 @@ function upload_file(file) {
       const response_md5_name = this.response["md5_name"];
       fileNameLi.textContent = `${fileName} - 100%`;
 
-      let existing_cookie = false;
-      files_cookie = Cookies.get("files");
-      if (files_cookie) {
-        const files = JSON.parse(files_cookie);
-        for (const file_json of files) {
-          if (file_json["md5_name"] == response_md5_name) {
-            existing_cookie = true;
-          }
-        }
-      }
-
-      // Create an object to store your data
-      const file_json = {
-        file_name: response_file_name,
-        md5_name: response_md5_name,
-      };
-
-      if (!existing_cookie) {
-        add_to_list_cookie("files", file_json);
-      }
-
       totalFilesUploaded++;
-      //console.log(`${totalFilesUploaded} - ${fileList.getElementsByTagName("li").length}`)
+
+      if (!uploaded_files.some((file) => file.md5_name === response_md5_name)) {
+        uploaded_files.push(new UploadedFile(response_file_name, response_md5_name));
+      }
+
       // Make the convert button visible, once all files are loaded.
       if (totalFilesUploaded >= fileList.getElementsByTagName("li").length) {
-        convertButton.removeAttribute("style");
+        convertButton.classList.remove("button-1-disabled");
+        convertButton.classList.add("button-1");
       }
     }
   });
@@ -126,5 +119,75 @@ function upload_files() {
 }
 
 function convert_files() {
+  const conversion_type = document.querySelector('input[name="convert_type"]:checked').value;
+  const conversion_options = {};
+
+  if (conversion_type === "test") {
+    conversion_options["test"] = [];
+
+    const checkboxes = document.querySelectorAll('.convert-test-options input[type="checkbox"]:checked');
+    checkboxes.forEach((checkbox) => {
+      conversion_options["test"].push(checkbox.value);
+    });
+  }
+
+  for (const uploaded_file of uploaded_files) {
+    let existing_cookie = false;
+    let files_cookie = Cookies.get("files");
+    const cookie_json = files_cookie ? JSON.parse(files_cookie) : undefined;
+
+    if (files_cookie) {
+      existing_cookie = cookie_json.some((file_json) => file_json["md5_name"] === uploaded_file.md5_name);
+    }
+
+    console.log(`${conversion_type} - ${conversion_options}`);
+
+    // Create an object to store your data
+    const file_json = {
+      file_name: uploaded_file.filename,
+      md5_name: uploaded_file.md5_name,
+      conversion_types: [conversion_type],
+      conversion_options: conversion_options,
+    };
+
+    if (!existing_cookie) {
+      add_to_list_cookie("files", file_json);
+    } else {
+      // Append to existing cookies data
+      const index = cookie_json.findIndex((item) => item.md5_name === file_json.md5_name);
+      if (index !== -1) {
+        const conversion_types = cookie_json[index].conversion_types;
+        console.log(cookie_json);
+        if (!conversion_types.includes(conversion_type)) {
+          conversion_types.push(conversion_type);
+        }
+        cookie_json[index].conversion_options = {
+          ...cookie_json[index].conversion_options,
+          ...conversion_options,
+        };
+        Cookies.set("files", JSON.stringify(cookie_json));
+      }
+    }
+  }
+
   window.location.href = "/results";
 }
+
+window.addEventListener("load", () => {
+  // Get all radio elements and the convert-test-options div
+  const radioButtons = document.querySelectorAll('input[name="convert_type"]');
+  const convertTestOptions = document.querySelector(".convert-test-options");
+
+  // Add event listeners to all radio buttons
+  radioButtons.forEach((radioButton) => {
+    radioButton.addEventListener("change", function () {
+      if (this.id === "radio-test") {
+        // Display convert-test-options for radio-test
+        convertTestOptions.style.display = this.checked ? "block" : "none";
+      } else {
+        // Hide convert-test-options for other radio buttons
+        convertTestOptions.style.display = "none";
+      }
+    });
+  });
+});

@@ -1,7 +1,8 @@
 body {
   /*background-color:white;*/
-  background: radial-gradient(circle, #ffffff, #030adf1e);
+  background: radial-gradient(circle, #ffffff, #e5e4ff);
   font-family: "Dejavu Sans", Arial, Verdana, sans-serif;
+  color: rgb(61, 61, 61);
 }
 
 li p {
@@ -11,21 +12,20 @@ li p {
 li a {
   text-decoration: none;
   font-family: Georgia;
-  font-size: 18px;
+  font-size: 20px;
   color: #000;
   opacity: 85%;
 }
 
 li a:hover {
   opacity: 1;
-  color: #767fc2;
 }
 
 nav {
   display: flex;
   justify-content: space-between; /* To evenly distribute the items horizontally */
   /*background-color: rgba(3, 10, 223, 0.116);*/
-  background-color: #b3baf3;
+  background-color: #aaa3f9;
   padding: 10px;
   border-radius: 5px;
 }
@@ -41,12 +41,12 @@ nav li {
   margin-right: 20px;
   font-family: Georgia;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 nav a {
   text-decoration: none;
-  color: #000;
+  color: white;
 }
 
 /* Add hover effect for links */
@@ -131,11 +131,11 @@ p {
 
 .upload-area {
   padding: 4px;
-  background-color: #3c4fe05d;
+  background-color: #cdccff;
   max-width: 650px; /* Set your desired width */
   min-width: 310px;
   min-height: 250px;
-  border: 8px groove #8377b9; /* Optional: Add a dashed border for visual style */
+  border: 8px dashed #aaa3f9; /* Optional: Add a dashed border for visual style */
 }
 
 #converting-files-list {
@@ -169,7 +169,6 @@ input[type="submit"] {
     rgba(58, 65, 111, 0.5) 0 -3px 0 inset;
   box-sizing: border-box;
   color: #c7c4c4;
-  cursor: wait;
   display: inline-flex;
   /*font-family: "JetBrains Mono",monospace;*/
   height: 48px;
@@ -188,14 +187,15 @@ input[type="submit"] {
   touch-action: manipulation;
   white-space: nowrap;
   will-change: box-shadow, transform;
-  font-size: 18px;
+  font-size: 24px;
   width: 150px;
+  font-family: Georgia;
 }
 
 .button-1 {
   align-items: center;
   appearance: none;
-  background-image: radial-gradient(100% 100% at 100% 0, #5adaff 0, #5468ff 100%);
+  background-image: radial-gradient(100% 100% at 100% 0, #aaa3f9 0, #7270b6 100%);
   border: 0;
   border-radius: 6px;
   box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px,
@@ -242,14 +242,14 @@ input[type="submit"] {
 }
 
 .loader {
+  float: right;
   width: 32px;
   height: 32px;
   margin: auto;
   vertical-align: middle;
-  border: 5px solid #fff;
+  border: 5px solid #dfdfdf;
   border-bottom-color: #3c4fe0;
   border-radius: 50%;
-  display: inline-block;
   box-sizing: border-box;
   animation: rotation 1s linear infinite;
 }
@@ -347,7 +347,7 @@ input[type="submit"] {
 }
 
 .checkmark-done {
-  display: inline-block;
+  float: right;
   transform: rotate(45deg);
   height: 24px;
   width: 12px;
@@ -495,6 +495,7 @@ input[type="submit"] {
   padding-top: 15px;
   padding-bottom: 15px;
   padding-left: 4px;
+  padding-right: 4px;
   background-color: white;
 }
 
@@ -502,11 +503,32 @@ input[type="submit"] {
   flex-grow: 1;
 }
 
-.reasults-files-header {
+.results-output h2 {
+  text-align: center;
+}
+
+.results-files-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   text-align: center;
+}
+
+.convert-section {
+  max-width: 650px; /* Set your desired width */
+  min-width: 310px;
+  margin-top: 10px;
+  padding: 4px;
+  border: 6px double #aaa3f9;
+  background-color: #cdccff;
+}
+
+.convert-options {
+  padding: 6px;
+}
+
+.convert-options p {
+  margin: 4px;
 }
 
 /* The typing effect */

@@ -105,9 +105,9 @@ async def home():
     return await render_template("index.html", last_updated=dir_last_updated("./src/static"))
 
 
-@server.errorhandler(404)
-async def page_not_found(e):
-    return redirect("/")
+# @server.errorhandler(404)
+# async def page_not_found(e):
+#    return redirect("/")
 
 
 @server.route("/help", methods=["GET"])
@@ -194,56 +194,65 @@ async def export_results():
     return None
 
 
-@server.route("/pdf2json", methods=["POST"])
-async def pdf2json():
+@server.route("/convertfile/", methods=["GET"])
+def get_convert_file():
+    filename = request.args.get("filename")
+    md5_name = request.args.get("md5_name")
+    conversion_type = request.args.get("conversion_type")
+    print(f"Convertfile GET - Get {conversion_type} of {filename}", file=sys.stderr)
+    if filename and md5_name and conversion_type:
+        with open(f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json', "r") as file:
+            return json.load(file)[conversion_type]
+    else:
+        return "Missing parameters", 400
+
+
+@server.route("/convertfile", methods=["POST"])
+async def post_convert_file():
     request_form = await request.form
     try:
         filename = request_form.get("filename")
         md5_name = request_form.get("md5_name")
+        convert_type = request_form.get("conversion_type")
 
         # Generate a unique task ID, set it as processing
         task_id = str(uuid.uuid4())
         task_status[task_id] = "processing"
 
-        # Start the processing task asynchronously
-        server.add_background_task(
-            pdf_processing.async_pdf2json,
-            server,
-            task_status,
-            filename,
-            md5_name,
-            task_id,
-            request.remote_addr,
-        )
+        print(f"*** Converting {filename} to {convert_type} ***", file=sys.stderr)
 
-        # Return the task ID to the client
-        return jsonify({"task_id": task_id})
-
-    except Exception as e:
-        print("Error:", str(e), file=sys.stderr)
-        return "Error processing the request"
-
-
-@server.route("/json2questions", methods=["POST"])
-async def json2questions():
-    request_form = await request.form
-    try:
-        filename = request_form.get("filename")
-        md5_name = request_form.get("md5_name")
-
-        # Generate a unique task ID, set it as processing
-        task_id = str(uuid.uuid4())
-        task_status[task_id] = "processing"
-
-        # Start the processing task asynchronously
-        server.add_background_task(
-            pdf_processing.async_json2questions,
-            server,
-            task_status,
-            filename,
-            md5_name,
-            task_id,
-        )
+        match convert_type:
+            case "text":
+                server.add_background_task(
+                    pdf_processing.async_pdf2json,
+                    server,
+                    task_status,
+                    filename,
+                    md5_name,
+                    task_id,
+                    request.remote_addr,
+                )
+            case "flashcards":
+                server.add_background_task(
+                    pdf_processing.async_json2flashcards,
+                    server,
+                    task_status,
+                    filename,
+                    md5_name,
+                    task_id,
+                )
+            case "keywords":
+                server.add_background_task(
+                    pdf_processing.async_json2keywords,
+                    server,
+                    task_status,
+                    filename,
+                    md5_name,
+                    task_id,
+                )
+            case _:
+                task_status[task_id] = "error"
+                return "Error processing the request"
 
         # Return the task ID to the client
         return jsonify({"task_id": task_id})

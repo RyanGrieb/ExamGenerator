@@ -1,4 +1,5 @@
 * DECEMBER *
+0. Hide convert button instead of disabling it.
 1. Have front end display flashcards like quizlet, with Q&A sets under it.
 2. Modify PDF output such that Q&A sets are in the shape of a flashcard, and support double sided printing where answers are on the back.
 2. Give title to PDF export tab.

@@ -3,9 +3,11 @@
 <script src="{{ url_for('static',filename='js/index.js') }}?u={{ last_updated }}"></script>
 <!-- <script src="{{ url_for('static',filename='js/index_fluff.js') }}?u={{ last_updated }}"></script> -->
 {% endblock %} {% block body %}
-<div class="center-horizontally center-inside-elems">
-    <h1 class="center-text">PDF to Test Questions</h1>
-    <h2 class="center-text">Generate questions and answers from a PDF file.</h2>
+<div>
+    <div class="center-horizontally center-inside-elems">
+        <h1 class="center-text" style="margin-bottom: 0">PDF-2-Flashcards</h1>
+        <h2 class="center-text">Generate flashcards, test questions, and more</h2>
+    </div>
 </div>
 <div class="upload-area center-horizontally center-inside-elems" ondrop="dropHandler(event);"
     ondragover="dragOverHandler(event);">
@@ -22,10 +24,32 @@
         <div class="convert-region center-inside-elems">
             <ul>
             </ul>
-            <button class="file-convert-btn button-1" style="display: none;" onclick="convert_files()">Convert
-                Files</button>
         </div>
     </div>
+</div>
+<div class="convert-section center-horizontally center-inside-elems">
+    <div class="convert-options">
+        <p>Conversion Options:</p>
+        <input type="radio" id="radio-flashcards" name="convert_type" checked="checked" value="flashcards">
+        <label for="radio-flashcards">Flashcards</label><br>
+        <input type="radio" id="radio-test" name="convert_type" value="test">
+        <label for="radio-test">Test/Quiz Questions</label><br>
+        <div class="convert-test-options" style="display: none;">
+            &emsp;<input type="checkbox" id="check-multiple-choice" name="test_type" checked="checked"
+                value="test_multiple_choice">
+            <label for="check-multiple-choice">Multiple Choice</label><br>
+            &emsp;<input type="checkbox" id="check-true-false" name="test_type" checked="checked"
+                value="test_true_false">
+            <label for="check-true-false">True/False</label><br>
+            &emsp;<input type="checkbox" id="check-free-response" name="test_type" checked="checked" ,
+                value="test_free_response">
+            <label for="check-free-response">Free Response</label><br>
+        </div>
+        <input type="radio" id="radio-definition" name="convert_type" value="keywords">
+        <label for="radio-definition">Keyword/Definition</label>
+    </div>
+    <button class="file-convert-btn button-1-disabled" onclick="convert_files()">Convert
+        Files</button>
 </div>
 <!-- Temporary DB values test: 
 <ul style="display: none;">

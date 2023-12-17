@@ -21,8 +21,8 @@ function add_to_list_cookie(cookie_name, list_object) {
     const files = JSON.parse(files_cookie);
     files.push(list_object);
     Cookies.set(cookie_name, JSON.stringify(files));
-    //console.log("NEW COOKIES:")
-    //console.log(Cookies.get("files"))
+    console.log("NEW COOKIES:");
+    console.log(Cookies.get("files"));
   }
 }
 

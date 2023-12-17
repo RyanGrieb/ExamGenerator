@@ -206,6 +206,49 @@ def json2text(server: Quart, md5_name: str):
     return formatted_text
 
 
+async def gpt_generate_definitions(server, md5_name, data):
+    logger: logging.Logger = get_logger_for_file(server, md5_name)
+    logger.info("Function: gpt_generate_definitions")
+
+    print(f"*********************** Generate Definitions from text chunk:\n{data}")
+    logger.debug(f"*********************** Generate Definitions from text chunk:\n{data}")
+
+    prompt = f"Please analyze the data and provide 'keyword: definition' pairs relevant for study. Your responses should strictly follow this format without numbering:\nKeyword: Definition\nDo NOT include the words 'Keyword' or 'Definition' in the output. The provided data is as follows:\n{data}"
+
+    response = await openai.ChatCompletion.acreate(
+        model="gpt-3.5-turbo",
+        messages=[
+            # {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0,
+    )
+    response_data: str = response["choices"][0]["message"]["content"]
+    definition_pairs = response_data.split("\n")
+    definition_pairs = [definition for definition in definition_pairs if definition != ""]
+
+    new_definition_pairs = []
+    existing_definitions = []
+    existing_keywords = []
+
+    for definition_pair in definition_pairs:
+        if ":" not in definition_pair:
+            continue
+        keyword = definition_pair.split(":", 1)[0].strip()
+        definition = definition_pair.split(":", 1)[1].strip()
+        if keyword in existing_keywords or definition in existing_definitions:
+            continue
+
+        existing_definitions.append(definition)
+        existing_keywords.append(keyword)
+        new_definition_pairs.append([keyword, definition])
+        # print(f"Keyword: '{keyword}' - Definition: '{definition}'", file=sys.stderr)
+
+    definition_pairs = new_definition_pairs
+
+    return definition_pairs
+
+
 async def gpt_generate_qa(server, md5_name, data):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: gpt_generate_qa")
@@ -266,6 +309,7 @@ async def gpt_generate_qa(server, md5_name, data):
 
     qa_sets = new_qa_sets
 
+    # Return a list with a nested list of two elements (Q/A)
     return qa_sets
 
 
@@ -335,18 +379,78 @@ async def async_pdf2json(
         task_status[task_id] = "error"
 
 
-async def async_json2questions(server: Quart, task_status, filename: str, md5_name: str, task_id: str):
+# FIXME: Remove this redundant code with json2qa, merge some functionalities here.
+async def async_json2keywords(server: Quart, task_status, filename: str, md5_name: str, task_id: str):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
-    logger.info("Function: async_json2questions")
+    logger.info("Function: async_json2keywords")
 
     try:
         processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
+        processed_json = {}
+
         # Check if file already exists and q&a for it was generated, if so, set the task status as completed
         if os.path.isfile(processed_file):
-            # FIXME: GET JSON from processed_file
-            logger.debug(f"Q&A already exists for {filename}, returning...")
-            task_status[task_id] = "completed"
-            return
+            with open(processed_file, "r") as file:
+                processed_json = json.load(file)
+
+            if "keywords" in processed_json:
+                logger.debug(f"Definition already exists for {filename}, returning...")
+                task_status[task_id] = "completed"
+                return
+
+        pdf_text = json2text(server, md5_name)
+
+        logger.debug("JSON text (converted from JSON): ")
+        logger.debug(pdf_text)
+
+        truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
+        logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
+
+        generated_definitions = []
+        for text_chunk in truncated_pdf_text:
+            definitions = await gpt_generate_definitions(server, md5_name, text_chunk)
+            if definitions is None:
+                continue
+            generated_definitions = generated_definitions + definitions
+
+        # Save Q&A set to filesystem
+        # Create directory if it doesn't exist.
+        if not os.path.exists(server.config["PROCESSED_FOLDER"]):
+            os.makedirs(server.config["PROCESSED_FOLDER"])
+
+        processed_json["keywords"] = generated_definitions
+
+        with open(processed_file, "w") as file:
+            json.dump(processed_json, file)
+
+        task_status[task_id] = "completed"
+        logger.debug("Definition Generation Successful.")
+
+    except Exception as e:
+        error_message = f"Error: {str(e)} at line {traceback.tb_lineno}"
+        print(error_message, file=sys.stderr)
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        task_status[task_id] = "error"
+
+
+async def async_json2flashcards(server: Quart, task_status, filename: str, md5_name: str, task_id: str):
+    logger: logging.Logger = get_logger_for_file(server, md5_name)
+    logger.info("Function: async_json2flashcards")
+
+    try:
+        processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
+        processed_json = {}
+
+        # Check if file already exists and q&a for it was generated, if so, set the task status as completed
+        if os.path.isfile(processed_file):
+            with open(processed_file, "r") as file:
+                processed_json = json.load(file)
+
+            if "flashcards" in processed_json:
+                logger.debug(f"Flashcards already exists for {filename}, returning...")
+                task_status[task_id] = "completed"
+                return
 
         pdf_text = json2text(server, md5_name)
 
@@ -363,24 +467,18 @@ async def async_json2questions(server: Quart, task_status, filename: str, md5_na
                 continue
             generated_qa = generated_qa + qa
 
-        processed_json = {}
         # Save Q&A set to filesystem
         # Create directory if it doesn't exist.
         if not os.path.exists(server.config["PROCESSED_FOLDER"]):
             os.makedirs(server.config["PROCESSED_FOLDER"])
 
-        # Load any existing json data from our file, if present.
-        if os.path.isfile(processed_file):
-            with open(processed_file, "r") as file:
-                processed_json = json.load(file)
-
-        processed_json["qa_set"] = generated_qa
+        processed_json["flashcards"] = generated_qa
 
         with open(processed_file, "w") as file:
             json.dump(processed_json, file)
 
         task_status[task_id] = "completed"
-        logger.debug("Q&A Generation Successful.")
+        logger.debug("Flashcard Generation Successful.")
 
     except Exception as e:
         error_message = f"Error: {str(e)} at line {traceback.tb_lineno}"
