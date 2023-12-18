@@ -55,8 +55,7 @@ function upload_file(file) {
   }
 
   // Hide the convert button again, since were waiting on documents to upload:
-  convertButton.classList.remove("button-1");
-  convertButton.classList.add("button-1-disabled");
+  convertButton.classList.add("hidden");
 
   // Create an li element for each file
   const fileNameLi = document.createElement("li");
@@ -94,8 +93,7 @@ function upload_file(file) {
 
       // Make the convert button visible, once all files are loaded.
       if (totalFilesUploaded >= fileList.getElementsByTagName("li").length) {
-        convertButton.classList.remove("button-1-disabled");
-        convertButton.classList.add("button-1");
+        convertButton.classList.remove("hidden");
       }
     }
   });

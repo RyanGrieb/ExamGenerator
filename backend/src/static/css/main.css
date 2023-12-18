@@ -67,6 +67,10 @@ p {
   font-size: 130%;
 }
 
+.hidden {
+  display: none !important;
+}
+
 #toc-container {
   margin: auto;
   margin-top: 30px;
