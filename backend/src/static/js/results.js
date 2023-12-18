@@ -25,6 +25,22 @@ async function display_file_data(filename, md5_name, conversion_type) {
 
   const title_elem = document.createElement("h2");
 
+  if (conversion_type == "test") {
+    title_elem.innerHTML = `${filename} Test/Quiz Questions:`;
+    results_output.appendChild(title_elem);
+
+    // Construct Test Question/Answer pairs
+    const test_questions_set_div = document.createElement("div");
+    for (const [index, test_question_set] of file_data.data[conversion_type].entries()) {
+      const p_element = document.createElement("p");
+      const question = test_question_set[1].replace(/([A-Za-z]\)\s)/g, "<br>$1");
+      const answer = test_question_set[2];
+      p_element.innerHTML = `<b>${index + 1}.</b> ${question}<br><br>${answer}`;
+      test_questions_set_div.appendChild(p_element);
+    }
+    results_output.appendChild(test_questions_set_div);
+  }
+
   if (conversion_type == "keywords") {
     title_elem.innerHTML = `${filename} Keyword/Definition Pair:`;
     results_output.appendChild(title_elem);
@@ -164,32 +180,6 @@ async function post_export_results(file_names, md5_names, export_type) {
   }
 }
 
-// Make our q&a set look prettier. Remove any empty answers, and format [NEWLINE] strings with an actual \n.
-// Number our q&a set too.
-function deprecated_post_process_qa_set(qa_set) {
-  // Split the input string into lines
-  const lines = qa_set.trim().split("\n");
-
-  // Create a new string with numbers before each Q&A set
-  let modifiedString = "";
-  let questionNumber = 0;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("Q:")) {
-      // Add the question with the number to the modified string
-      questionNumber++;
-      modifiedString += `<br><b>${questionNumber}.</b> ${lines[i].trim()}\n`;
-    } else {
-      // Add answers without modification
-      modifiedString += `${lines[i].trim()}\n`;
-    }
-  }
-  qa_set = modifiedString;
-  console.log(qa_set);
-
-  // Output the modified string
-  return qa_set;
-}
-
 async function checkTaskStatus(task_id, completedCallback, errorCallback) {
   const interval = setInterval(async () => {
     // Send a GET request to check the task status using the task_id
@@ -246,13 +236,14 @@ async function get_converted_file(file_data, conversion_type) {
 // Convert the file to flashcards, keyword/definition, test questions, ect.
 async function post_convert_file(file_data, conversion_type, conversion_options, completeCallback, errorCallback) {
   console.log("POST: Convert file to:" + conversion_type);
+
   try {
     // Create a FormData object to send data with the POST request
     const formData = new FormData();
     formData.append("filename", file_data.filename);
     formData.append("md5_name", file_data.md5_name);
     formData.append("conversion_type", conversion_type);
-    formData.append("conversion_options", conversion_options);
+    formData.append("conversion_options", JSON.stringify(conversion_options));
 
     // Send a POST request to the server and wait for the response
     const response = await fetch("/convertfile", {
@@ -345,8 +336,7 @@ window.addEventListener("load", async () => {
     await new Promise((resolve) => {
       const completeCallback = (task_id) => {
         console.log("pfd2text callback done: " + task_id + " | " + file_data.filename);
-
-        for (const conversion_type of files_data[md5_name].conversion_types) {
+        for (const conversion_type of file_data.conversion_types) {
           post_convert_file(
             file_data,
             conversion_type,
@@ -373,7 +363,7 @@ window.addEventListener("load", async () => {
         resolve();
       };
 
-      post_convert_file(file_data, "text", [], completeCallback, errorCallback);
+      post_convert_file(file_data, "text", {}, completeCallback, errorCallback);
     });
   }
 });

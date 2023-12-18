@@ -214,6 +214,9 @@ async def post_convert_file():
         filename = request_form.get("filename")
         md5_name = request_form.get("md5_name")
         convert_type = request_form.get("conversion_type")
+        conversion_options = json.loads(request_form.get("conversion_options"))
+        print("*** CONVERSION OPTIONS: ***", file=sys.stderr)
+        print(conversion_options, file=sys.stderr)
 
         # Generate a unique task ID, set it as processing
         task_id = str(uuid.uuid4())
@@ -249,6 +252,16 @@ async def post_convert_file():
                     filename,
                     md5_name,
                     task_id,
+                )
+            case "test":
+                server.add_background_task(
+                    pdf_processing.async_json2test,
+                    server,
+                    task_status,
+                    filename,
+                    md5_name,
+                    task_id,
+                    conversion_options,
                 )
             case _:
                 task_status[task_id] = "error"

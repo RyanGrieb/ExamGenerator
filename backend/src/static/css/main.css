@@ -242,10 +242,8 @@ input[type="submit"] {
 }
 
 .loader {
-  float: right;
   width: 32px;
   height: 32px;
-  margin: auto;
   vertical-align: middle;
   border: 5px solid #dfdfdf;
   border-bottom-color: #3c4fe0;
@@ -347,7 +345,6 @@ input[type="submit"] {
 }
 
 .checkmark-done {
-  float: right;
   transform: rotate(45deg);
   height: 24px;
   width: 12px;
@@ -487,13 +484,30 @@ input[type="submit"] {
   background-color: #a6d8b2;
 }
 
+.results-files .loader {
+  margin-left: auto;
+  order: 2;
+}
+
+.results-files .checkmark-done {
+  margin-left: auto;
+  order: 2;
+  margin-right: 10px;
+}
+
+.results-files li p {
+  padding: 0;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
 .results-files li {
+  display: flex;
+  align-items: center;
   cursor: pointer;
   border-top: 1px solid black;
   border-left: 1px solid black;
   border-right: 1px solid black;
-  padding-top: 15px;
-  padding-bottom: 15px;
   padding-left: 4px;
   padding-right: 4px;
   background-color: white;
@@ -501,6 +515,7 @@ input[type="submit"] {
 
 .results-output {
   flex-grow: 1;
+  padding: 4px;
 }
 
 .results-output h2 {
