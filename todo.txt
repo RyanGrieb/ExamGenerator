@@ -1,7 +1,5 @@
 * DECEMBER *
-0. Hide convert button instead of disabling it.
-1. Have front end display flashcards like quizlet, with Q&A sets under it.
-2. Modify PDF output such that Q&A sets are in the shape of a flashcard, and support double sided printing where answers are on the back.
+0. Remove pending tasks if not checked on in 5-10 seconds. Remove complete, error tasks every 5-10 seconds.
 2. Give title to PDF export tab.
 3. Implement keyword: definition feature. ** Implement tests? E.g. Q&A results should result in even number of lines > 0.
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
