@@ -8,14 +8,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY . .
 
-ENV QUART_APP src.__init__
+ENV QUART_APP src.main
 ENV QUART_ENV development
 ENV QUART_RUN_PORT 8000
 ENV QUART_RUN_HOST 0.0.0.0
 
 EXPOSE 8000
 
-CMD ["quart", "run"]
+CMD ["quart", "--app", "src.main", "run"]
 
 FROM builder AS dev-envs
 
@@ -31,5 +31,3 @@ EOF
 
 # install Docker tools (cli, buildx, compose)
 COPY --from=gloursdocker/docker / /
-
-CMD ["quart", "run"]

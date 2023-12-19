@@ -33,7 +33,7 @@ async function display_file_data(filename, md5_name, conversion_type) {
     const test_questions_set_div = document.createElement("div");
     for (const [index, test_question_set] of file_data.data[conversion_type].entries()) {
       const p_element = document.createElement("p");
-      const question = test_question_set[1].replace(/([A-Za-z]\)\s)/g, "<br>$1");
+      const question = test_question_set[1].replaceAll("\n", "<br>");
       const answer = test_question_set[2];
       p_element.innerHTML = `<b>${index + 1}.</b> ${question}<br><br>${answer}`;
       test_questions_set_div.appendChild(p_element);
@@ -197,6 +197,10 @@ async function checkTaskStatus(task_id, completedCallback, errorCallback) {
         // You can perform further actions here
       } else if (statusData.status === "processing") {
         console.log(`Task with ID ${task_id} is still processing.`);
+      } else if (statusData.status === "error") {
+        clearInterval(interval); // Stop checking on error
+        console.log(`Task with ID ${task_id} threw error, stopping.`);
+        errorCallback();
       } else {
         clearInterval(interval); // Stop checking on error
         console.error(`Unknown status for task with ID ${task_id}: ${statusData.status}`);
@@ -358,8 +362,10 @@ window.addEventListener("load", async () => {
       const errorCallback = async (task_id) => {
         console.log("PDF2JSON callback error:");
         // The task was unsuccessful and an error occured! Tell that to the user..
-        await delay(3000);
-        i--;
+        console.log(file_data);
+        for (const conversion_type of file_data.conversion_types) {
+          set_file_status(md5_name, conversion_type, "error");
+        }
         resolve();
       };
 

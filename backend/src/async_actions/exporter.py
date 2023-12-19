@@ -1,11 +1,11 @@
-import os
+import os, sys, inspect
 from quart import Quart
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
 from reportlab.pdfgen.canvas import Canvas
-import reportlab.graphics.shapes
+from .async_task import set_task_status
 
 PAGE_HEIGHT = defaultPageSize[1]
 PAGE_WIDTH = defaultPageSize[0]
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     main()
 
 
-def export_files(server: Quart, task_status, task_id, file_id, md5_names: list[str], export_type):
+def export_files(server: Quart, task_id, file_id, md5_names: list[str], export_type):
     function_dict = {"excel": export_excel, "pdf": export_pdf, "text": export_text}
     # FIXME: Check if export_type doesn't exist, and return false if so
 
@@ -95,9 +95,9 @@ def export_files(server: Quart, task_status, task_id, file_id, md5_names: list[s
         os.makedirs(server.config["EXPORT_FOLDER"])
 
     if function_dict[export_type](server, md5_names, file_id):
-        task_status[task_id] = "completed"
+        set_task_status(task_id, "completed")
     else:
-        task_status[task_id] = "error"
+        set_task_status(task_id, "error")
 
 
 def get_qa_sets(server: Quart, md5_name: str) -> list[str]:
