@@ -8,7 +8,14 @@ class AsyncTask:
     def __init__(self, task_id):
         self.task_id = task_id
         self.status = None
-        self.last_updated = None
+        self.last_checked = None
+
+    def get_status(self):
+        """
+        Returns the task status, and updates the time it was last checked.
+        """
+        self.last_checked = time.time()
+        return self.status
 
 
 running_checker = False
@@ -20,7 +27,7 @@ def set_task_status(task_id: str, status: str):
         running_tasks[task_id] = AsyncTask(task_id)
 
     running_tasks[task_id].status = status
-    running_tasks[task_id].last_updated = time.time()
+    running_tasks[task_id].last_checked = time.time()
 
     # Begin the task checker once we have created a task.
     if not running_checker:
@@ -37,9 +44,9 @@ def start_task_checker():
             now = time.time()
 
             tasks_to_remove = []
-            
+
             for task_id, task in running_tasks.items():
-                if task.status == "error" or now - task.last_updated > 10:
+                if task.status == "error" or now - task.last_checked > 10:
                     tasks_to_remove.append(task_id)
 
             if len(tasks_to_remove) > 0:

@@ -155,7 +155,7 @@ def get_task_status(task_id):
     task = running_tasks.get(task_id)
     status = "not_found"
     if task != None:
-        status = task.status
+        status = task.get_status()
     return jsonify({"status": status})
 
 
