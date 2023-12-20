@@ -11,6 +11,22 @@ import traceback
 from .async_task import set_task_status
 
 
+def text_has_multiple_choice(text: str) -> bool:
+    """
+    Check if text has A) B) C) D) options
+    """
+    open_p_count = 0
+    # FIXME: Check letter prefix.
+    for i in range(0, len(text)):
+        character = text[i]
+        if character == "(":
+            open_p_count += 1
+        if character == ")":
+            open_p_count -= 1
+
+    return open_p_count < 0
+
+
 def get_logger_for_file(server: Quart, md5_name: str) -> logging.Logger:
     if not os.path.exists(server.config["LOG_FOLDER"]):
         os.makedirs(server.config["LOG_FOLDER"])
@@ -263,6 +279,11 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
         if "a primary color" in question:
             continue
 
+        # Edgecase: Correct question_type if answer is of true false, yet question_type is multiple choice.
+        if (answer == "Answer: False" or answer == "Answer: True") and question_type == "Multiple Choice":
+            if not text_has_multiple_choice(question):
+                question_type = "True/False"
+
         # Edgecase: Include letter options for True/False if not present.
         if question_type == "True/False" and "A) True" not in question:
             question += "\nA) True\nB) False"
@@ -275,17 +296,19 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
         if question_type == "Multiple Choice":
             string_list = list(question)
             string_list_copy = list(string_list)
-            opened_p = False
+            opened_p_count = 0
             added_characters = 0
             for i in range(0, len(string_list_copy)):
                 character = string_list_copy[i]
+
                 if character == "(":
-                    opened_p = True
-                if character == ")" and not opened_p:
+                    opened_p_count += 1
+
+                if character == ")" and opened_p_count <= 0:
                     string_list.insert(i - 1 + added_characters, "\n")
                     added_characters += 1
-                elif character == ")" and opened_p:
-                    opened_p = False
+                elif character == ")" and opened_p_count > 0:
+                    opened_p_count -= 1
 
             question = "".join(string_list)
 
@@ -366,7 +389,7 @@ async def gpt_generate_qa(server, md5_name, data):
 
     print(response_data)
     logger.debug(response_data)
-    
+
     # Edgecase: ??? Forgot. my bad.
     if "Q2A: None" in response_data:
         return None

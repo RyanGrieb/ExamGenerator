@@ -109,6 +109,15 @@ async def home():
 #    return redirect("/")
 
 
+@server.route("/register", methods=["GET"])
+async def register():
+    return await render_template("register.html", last_updated=dir_last_updated("./src/static"))
+
+@server.route("/login", methods=["GET"])
+async def login():
+    return await render_template("login.html", last_updated=dir_last_updated("./src/static"))
+
+
 @server.route("/help", methods=["GET"])
 async def help():
     return await render_template("help.html", last_updated=dir_last_updated("./src/static"))

@@ -1,23 +1,24 @@
-* DECEMBER *
-0. Remove pending tasks if not checked on in 5-10 seconds. Remove complete, error tasks every 5-10 seconds.
+* DECEMBER * (Improve output, Export features, User Accounts)
+0. ch7_sql q1 doesn't add A) True B) False to the question section.???? ---- Sometimes GPT classifies T/F question as multiple choice: Change it.
+1. Tell user what error they get for files
+2. Tell users progress % instead of just simple loading bar.
 2. Give title to PDF export tab.
-3. Implement keyword: definition feature. ** Implement tests? E.g. Q&A results should result in even number of lines > 0.
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
 5. Implement export to cheatsheet feature (For keyword: definition feature)
 6. Support PPTX files.
 7. Add user accounts (google integration, ect.)
-8. Saved documents for user accounts
-* JANUARY *
+8. Saved documents for user accounts, regardless of cookies.
+* JANUARY * (Premium accounts, Look & Feel, SEO)
 9. Limit document generation for users w/o account, along with "free" users.
 10. Add "premium features" (Export options, filetypes, filesize, unlimited conversions)
 11. Hire some dude on fiverr for CSS look & feel after implementing these features.
 12. Fix SEO for google.
 13. Write up report on potential costs of API vs. hardware.
-* FEBRUARY *
+* FEBRUARY * (Company, Marketing)
 14. Create LLC
 15. Legal shit? User data, uploaded docs, ect.?
 16. Start marketing
-* MARCH *
+* MARCH * (Email, Income Tracking)
 17. Create work email? @pdf2flashcards.com
 18. Shift payments to @pdf2flashcards.com
 19. Automate income/expenses from email onto google sheets: https://docs.google.com/spreadsheets/d/1vxsje0roJ4g_YpmBPFZC467zoVXOtJUPI0PY7keWLB0/edit#gid=0
