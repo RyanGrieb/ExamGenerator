@@ -113,6 +113,7 @@ async def home():
 async def register():
     return await render_template("register.html", last_updated=dir_last_updated("./src/static"))
 
+
 @server.route("/login", methods=["GET"])
 async def login():
     return await render_template("login.html", last_updated=dir_last_updated("./src/static"))
@@ -162,10 +163,10 @@ async def get_exported_document(file):
 @server.route("/task_status/<task_id>", methods=["GET"])
 def get_task_status(task_id):
     task = running_tasks.get(task_id)
-    
+
     if task == None:
         return {}
-    
+
     return task.get_status_json()
 
 
@@ -277,8 +278,8 @@ async def post_convert_file():
         return jsonify({"task_id": task_id})
 
     except Exception as e:
-       print("Error:", str(e), file=sys.stderr)
-       return "Error processing the request"
+        print("Error:", str(e), file=sys.stderr)
+        return "Error processing the request"
 
 
 @server.route("/results", methods=["GET"])
@@ -289,5 +290,5 @@ async def results():
     )
 
 
-# if __name__ == "__main__":
-# server.run()
+if __name__ == "__main__":
+    server.run()
