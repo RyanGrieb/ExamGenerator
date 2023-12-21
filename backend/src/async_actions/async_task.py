@@ -1,6 +1,7 @@
 import time
 import asyncio
 import sys
+from quart import jsonify
 
 
 # FIXME: Prevent duplicate tasks based on task type and file hash.
@@ -9,17 +10,32 @@ class AsyncTask:
         self.task_id = task_id
         self.status = None
         self.last_checked = None
+        self.progress = 0.0
 
-    def get_status(self):
+    def get_status_json(self):
         """
         Returns the task status, and updates the time it was last checked.
         """
         self.last_checked = time.time()
-        return self.status
+
+        return jsonify({"status": self.status, "progress": self.progress})
 
 
 running_checker = False
 running_tasks: dict[str, AsyncTask] = {}
+
+
+def set_task_progress(task_id: str, progress: float):
+    if task_id not in running_tasks:
+        print(f"Error: Setting task progress when task not created: {task_id}", file=sys.stderr)
+        return
+
+    if progress > 1 or progress < 0:
+        print(f"Error: Setting task progress out of bounds (0-1): {progress}", file=sys.stderr)
+        return
+
+    print(f"Setting progress of task {task_id} to {progress}", file=sys.stderr)
+    running_tasks[task_id].progress = progress
 
 
 def set_task_status(task_id: str, status: str):

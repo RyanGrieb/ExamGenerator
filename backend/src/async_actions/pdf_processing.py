@@ -8,7 +8,7 @@ import asyncio
 import openai
 import logging
 import traceback
-from .async_task import set_task_status
+from .async_task import set_task_status, set_task_progress
 
 
 def text_has_multiple_choice(text: str) -> bool:
@@ -634,11 +634,12 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
         logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
         generated_qa = []
-        for text_chunk in truncated_pdf_text:
+        for index, text_chunk in enumerate(truncated_pdf_text):
             qa = await gpt_generate_qa(server, md5_name, text_chunk)
             if qa is None:
                 continue
             generated_qa = generated_qa + qa
+            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
 
         # Save Q&A set to filesystem
         # Create directory if it doesn't exist.
@@ -659,7 +660,3 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
         logger.error(error_message)
         logger.error(traceback.format_exc())
         set_task_status(task_id, "error")
-
-
-if __name__ == "__main__":
-    main()

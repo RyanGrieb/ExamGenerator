@@ -190,6 +190,7 @@ async function checkTaskStatus(task_id, completedCallback, errorCallback) {
     if (statusResponse.ok) {
       const statusData = await statusResponse.json();
       // Check if the task is complete
+      console.log(statusData);
       if (statusData.status === "completed") {
         clearInterval(interval); // Stop checking once it's complete
         console.log(`Task with ID ${task_id} is complete.`);

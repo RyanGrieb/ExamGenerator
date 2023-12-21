@@ -60,8 +60,43 @@ function upload_file(file) {
   // Create an li element for each file
   const fileNameLi = document.createElement("li");
   fileNameLi.id = `upload-li-${formattedFileName}`;
-  fileNameLi.textContent = fileName + " - 0%";
+
+  const liDiv = document.createElement("div");
+  const fielNameP = document.createElement("p");
+  fielNameP.innerHTML = fileName + " - 0%";
+
+  liDiv.appendChild(fielNameP);
+  fileNameLi.appendChild(liDiv);
   fileList.appendChild(fileNameLi);
+
+  const progressBar = new ProgressBar.Line(liDiv, {
+    strokeWidth: 4,
+    easing: "easeInOut",
+    duration: 1400,
+    color: "#aaa3f9",
+    trailColor: "#eee",
+    trailWidth: 1,
+    svgStyle: { width: "100%", height: "100%" },
+    text: {
+      style: {
+        // Text color.
+        // Default: same as stroke color (options.color)
+        color: "#999",
+        position: "absolute",
+        right: "0",
+        top: "30px",
+        padding: 0,
+        margin: 0,
+        transform: null,
+      },
+      autoStyleContainer: false,
+    },
+    from: { color: "#aaa3f9" },
+    to: { color: "#ED6A5A" },
+    step: (state, bar) => {
+      //bar.setText(Math.round(bar.value() * 100) + " %");
+    },
+  });
 
   // Create and append our file to the XMLHttpRequest.
   const request = new XMLHttpRequest();
@@ -71,11 +106,13 @@ function upload_file(file) {
   request.upload.addEventListener("progress", (event) => {
     if (event.loaded <= fileSize) {
       const percent = Math.round((event.loaded / fileSize) * 100);
-      fileNameLi.textContent = `${fileName} - ${percent}%`;
+      progressBar.animate(percent / 100);
+      fielNameP.innerHTML = `${fileName} - ${percent}%`;
     }
 
     if (event.loaded == event.total) {
-      fileNameLi.textContent = `${fileName} - 99%`;
+      progressBar.animate(0.9);
+      fielNameP.innerHTML = `${fileName} - 99%`;
     }
   });
 
@@ -83,7 +120,8 @@ function upload_file(file) {
     if (this.readyState === this.DONE) {
       const response_file_name = this.response["file_name"];
       const response_md5_name = this.response["md5_name"];
-      fileNameLi.textContent = `${fileName} - 100%`;
+      fielNameP.innerHTML = `${fileName} - 100%`;
+      progressBar.animate(1);
 
       totalFilesUploaded++;
 

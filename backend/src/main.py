@@ -162,10 +162,11 @@ async def get_exported_document(file):
 @server.route("/task_status/<task_id>", methods=["GET"])
 def get_task_status(task_id):
     task = running_tasks.get(task_id)
-    status = "not_found"
-    if task != None:
-        status = task.get_status()
-    return jsonify({"status": status})
+    
+    if task == None:
+        return {}
+    
+    return task.get_status_json()
 
 
 @server.route("/export_results", methods=["POST"])
