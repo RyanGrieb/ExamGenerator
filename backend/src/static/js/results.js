@@ -10,6 +10,7 @@ class FileData {
 
 let md5_files = [];
 let files_data = {};
+let progress_bars = {};
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -189,13 +190,19 @@ async function checkTaskStatus(task_id, completedCallback, errorCallback) {
 
     if (statusResponse.ok) {
       const statusData = await statusResponse.json();
+
+      if (statusData.attributes.convert_type != "text") {
+        if (statusData.attributes && statusData.attributes.md5_name && statusData.attributes.convert_type) {
+          const value = Math.min(0.2 + statusData.progress, 0.95);
+          set_file_progress(statusData.attributes.md5_name, statusData.attributes.convert_type, value);
+        }
+      }
+
       // Check if the task is complete
-      console.log(statusData);
       if (statusData.status === "completed") {
         clearInterval(interval); // Stop checking once it's complete
         console.log(`Task with ID ${task_id} is complete.`);
         completedCallback();
-        // You can perform further actions here
       } else if (statusData.status === "processing") {
         console.log(`Task with ID ${task_id} is still processing.`);
       } else if (statusData.status === "error") {
@@ -275,17 +282,64 @@ async function post_convert_file(file_data, conversion_type, conversion_options,
   }
 }
 
+function set_file_progress(md5_name, conversion_type, value) {
+  progress_bars[`${md5_name}-${conversion_type}`].animate(value);
+}
+
 function set_file_status(md5_name, conversion_type, iconName) {
   const list_element = document.getElementById(`li-${md5_name}-${conversion_type}`);
 
   //Remove existing <i> elements
   const existing_i_elem = list_element.querySelector("i");
   if (existing_i_elem) list_element.removeChild(existing_i_elem);
+  if (iconName != "loader") {
+    const loader = document.createElement("i");
+    loader.className = iconName;
+    loader.id = md5_name;
+    list_element.appendChild(loader);
 
-  const loader = document.createElement("i");
-  loader.className = iconName;
-  loader.id = md5_name;
-  list_element.appendChild(loader);
+    // Remove loader from our row.
+    if (`${md5_name}-${conversion_type}` in progress_bars) {
+      set_file_progress(md5_name, conversion_type, 1);
+      list_element.removeChild(document.getElementById(`progress-${md5_name}-${conversion_type}`));
+      delete progress_bars[`${md5_name}-${conversion_type}`];
+    }
+  } else {
+    const list_loader_div = document.createElement("div");
+    list_loader_div.style = "width: 42px; height:42px;   margin-left: auto; order: 2;";
+    list_loader_div.id = `progress-${md5_name}-${conversion_type}`;
+    list_element.appendChild(list_loader_div);
+    const progress_bar = new ProgressBar.Circle(list_loader_div, {
+      strokeWidth: 14,
+      easing: "easeInOut",
+      duration: 4000,
+      color: "#aaa3f9",
+      trailColor: "#eee",
+      trailWidth: 1,
+      svgStyle: { width: "100%", height: "100%" },
+      text: {
+        style: {
+          // Text color.
+          // Default: same as stroke color (options.color)
+          color: "#999",
+          position: "absolute",
+          right: "0",
+          top: "30px",
+          padding: 0,
+          margin: 0,
+          transform: null,
+          width: "32px",
+        },
+        autoStyleContainer: false,
+      },
+      from: { color: "#aaa3f9" },
+      to: { color: "#ED6A5A" },
+      step: (state, bar) => {
+        //bar.setText(Math.round(bar.value() * 100) + " %");
+      },
+    });
+    progress_bars[`${md5_name}-${conversion_type}`] = progress_bar;
+  }
 }
 
 window.addEventListener("load", async () => {
@@ -342,6 +396,7 @@ window.addEventListener("load", async () => {
       const completeCallback = (task_id) => {
         console.log("pfd2text callback done: " + task_id + " | " + file_data.filename);
         for (const conversion_type of file_data.conversion_types) {
+          set_file_progress(file_data.md5_name, conversion_type, 0.2);
           post_convert_file(
             file_data,
             conversion_type,

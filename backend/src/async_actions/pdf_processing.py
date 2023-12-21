@@ -526,11 +526,12 @@ async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: 
         logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
         generated_test_questions = []
-        for text_chunk in truncated_pdf_text:
+        for index, text_chunk in enumerate(truncated_pdf_text):
             test_questions = await gpt_generate_test_questions(server, md5_name, text_chunk, conversion_options)
             if test_questions is None:
                 continue
             generated_test_questions = generated_test_questions + test_questions
+            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
 
         # Save test questions set to filesystem
         # Create directory if it doesn't exist.
@@ -580,11 +581,12 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
         logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
         generated_definitions = []
-        for text_chunk in truncated_pdf_text:
+        for index, text_chunk in enumerate(truncated_pdf_text):
             definitions = await gpt_generate_definitions(server, md5_name, text_chunk)
             if definitions is None:
                 continue
             generated_definitions = generated_definitions + definitions
+            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
 
         # Save Q&A set to filesystem
         # Create directory if it doesn't exist.

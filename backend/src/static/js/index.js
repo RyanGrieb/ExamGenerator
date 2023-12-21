@@ -72,7 +72,7 @@ function upload_file(file) {
   const progressBar = new ProgressBar.Line(liDiv, {
     strokeWidth: 4,
     easing: "easeInOut",
-    duration: 1400,
+    duration: 500,
     color: "#aaa3f9",
     trailColor: "#eee",
     trailWidth: 1,

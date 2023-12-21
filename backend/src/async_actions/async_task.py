@@ -11,6 +11,7 @@ class AsyncTask:
         self.status = None
         self.last_checked = None
         self.progress = 0.0
+        self.attributes = {}
 
     def get_status_json(self):
         """
@@ -18,11 +19,18 @@ class AsyncTask:
         """
         self.last_checked = time.time()
 
-        return jsonify({"status": self.status, "progress": self.progress})
+        return jsonify({"status": self.status, "progress": self.progress, "attributes": self.attributes})
 
 
 running_checker = False
 running_tasks: dict[str, AsyncTask] = {}
+
+
+def set_task_attribute(task_id: str, key: str, value: object):
+    if task_id not in running_tasks:
+        return
+
+    running_tasks[task_id].attributes[key] = value
 
 
 def set_task_progress(task_id: str, progress: float):
@@ -44,6 +52,9 @@ def set_task_status(task_id: str, status: str):
 
     running_tasks[task_id].status = status
     running_tasks[task_id].last_checked = time.time()
+
+    if status == "completed":
+        running_tasks[task_id].progress = 1
 
     # Begin the task checker once we have created a task.
     if not running_checker:

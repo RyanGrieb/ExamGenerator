@@ -232,6 +232,8 @@ async def post_convert_file():
         # Generate a unique task ID, set it as processing
         task_id = str(uuid.uuid4())
         set_task_status(task_id, "processing")
+        set_task_attribute(task_id, "md5_name", md5_name)
+        set_task_attribute(task_id, "convert_type", convert_type)
 
         print(f"*** Converting {filename} to {convert_type} ***", file=sys.stderr)
 

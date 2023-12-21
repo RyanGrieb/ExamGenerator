@@ -1,7 +1,6 @@
 * DECEMBER * (Improve output, Export features, User Accounts)
 0. Handle errors when we restart server while users are converting files.
 1. Tell user what error they get for files
-2. Tell users progress % instead of just simple loading bar.
 2. Give title to PDF export tab.
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
 5. Implement export to cheatsheet feature (For keyword: definition feature)
