@@ -1,8 +1,10 @@
+* ??? - Need to reproduce *
+0. Edgecase: Remove '-' at beginning of keyword for keyword/definition generation
+
+
 * DECEMBER * (Improve output, Export features, User Accounts)
-0. Edgecase: Remove any questions, flashcards that reference table x.x
-0. Edgecase: Remove '-' at beginning of keyword for keyword/definition generation (look at ch1 keyword pair)
+0. Give user option to remove file from list (Delete cookie).
 0. Handle errors when we restart server while users are converting files.
-1. Tell user what error they get for files
 2. Give title to PDF export tab.
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
 5. Implement export to cheatsheet feature (For keyword: definition feature)
@@ -14,7 +16,8 @@
 10. Add "premium features" (Export options, filetypes, filesize, unlimited conversions)
 11. Hire some dude on fiverr for CSS look & feel after implementing these features.
 12. Fix SEO for google.
-13. Write up report on potential costs of API vs. hardware.
+13. Fix CSS to support mobile devices.
+14. Write up report on potential costs of API vs. hardware.
 * FEBRUARY * (Company, Marketing)
 14. Create LLC
 15. Legal shit? User data, uploaded docs, ect.?

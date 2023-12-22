@@ -8,7 +8,7 @@ import asyncio
 import openai
 import logging
 import traceback
-from .async_task import set_task_status, set_task_progress
+from .async_task import set_task_status, set_task_progress, set_task_attribute
 import re
 
 GPT_MODEL = "gpt-3.5-turbo-1106"
@@ -480,6 +480,10 @@ async def async_pdf2json(
         if not os.path.isfile(pdf_file_path):
             logger.debug(f"Error: PDF file does not exist: {filename}")
             set_task_status(task_id, "error")
+            set_task_attribute(
+                task_id, "error_msg", "Error: Unable to find uploaded PDF file. Try uploading the file again."
+            )
+            set_task_attribute(task_id, "error_type", "no_file")
             return
 
         # Check if file already exists, if so, set the task status as completed:
@@ -631,7 +635,7 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
         logger.debug("Definition Generation Successful.")
 
     except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.tb_lineno}"
+        error_message = f"Error: {str(e)} at line ???"
         print(error_message, file=sys.stderr)
         logger.error(error_message)
         logger.error(traceback.format_exc())

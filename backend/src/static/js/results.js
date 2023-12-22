@@ -5,6 +5,7 @@ class FileData {
     this.conversion_types = conversion_types;
     this.conversion_options = conversion_options; //Dictonary
     this.data = {};
+    this.error_msg = undefined;
   }
 }
 
@@ -25,6 +26,17 @@ async function display_file_data(filename, md5_name, conversion_type) {
   results_output.innerHTML = "";
 
   const title_elem = document.createElement("h2");
+
+  // Display error message to user if present.
+  if (file_data.error_msg != undefined) {
+    title_elem.innerHTML = `Error processing ${filename}`;
+    results_output.appendChild(title_elem);
+
+    const error_elem = document.createElement("p");
+    error_elem.innerHTML = file_data.error_msg;
+    results_output.appendChild(error_elem);
+    return;
+  }
 
   if (conversion_type == "test") {
     title_elem.innerHTML = `${filename} Test/Quiz Questions:`;
@@ -163,7 +175,7 @@ async function post_export_results(file_names, md5_names, export_type) {
       const task_id = responseData.task_id;
       const file_id = responseData.file_id;
 
-      checkTaskStatus(
+      start_check_task_interval(
         task_id,
         () => {
           window.open(`/exports/${file_id}.${export_type}`);
@@ -184,42 +196,63 @@ async function post_export_results(file_names, md5_names, export_type) {
   }
 }
 
-async function checkTaskStatus(task_id, completedCallback, errorCallback) {
-  const interval = setInterval(async () => {
-    // Send a GET request to check the task status using the task_id
+async function get_task_status_json(task_id) {
+  try {
     const statusResponse = await fetch(`/task_status/${task_id}`, {
       method: "GET",
     });
 
     if (statusResponse.ok) {
-      const statusData = await statusResponse.json();
+      return await statusResponse.json();
+    } else {
+      return undefined;
+    }
+  } catch (error) {
+    console.log(error);
+    location.reload();
+  }
+}
 
-      if (statusData.attributes.convert_type != "text") {
-        if (statusData.attributes && statusData.attributes.md5_name && statusData.attributes.convert_type) {
-          const value = Math.min(0.2 + statusData.progress, 0.95);
-          set_file_progress(statusData.attributes.md5_name, statusData.attributes.convert_type, value);
-        }
-      }
+async function start_check_task_interval(task_id, completedCallback, errorCallback) {
+  const interval = setInterval(async () => {
+    // Send a GET request to check the task status using the task_id
+    const status_data = await get_task_status_json(task_id);
 
-      // Check if the task is complete
-      if (statusData.status === "completed") {
-        clearInterval(interval); // Stop checking once it's complete
-        console.log(`Task with ID ${task_id} is complete.`);
-        completedCallback();
-      } else if (statusData.status === "processing") {
-        console.log(`Task with ID ${task_id} is still processing.`);
-      } else if (statusData.status === "error") {
-        clearInterval(interval); // Stop checking on error
-        console.log(`Task with ID ${task_id} threw error, stopping.`);
-        errorCallback();
-      } else {
-        clearInterval(interval); // Stop checking on error
-        console.error(`Unknown status for task with ID ${task_id}: ${statusData.status}`);
-        errorCallback();
+    if (!status_data) {
+      clearInterval(interval); // Stop checking on error
+      console.error(`Error checking task status for task ID ${task_id}`);
+      errorCallback();
+      return;
+    }
+    console.log(status_data);
+
+    //The status_data can be empty if we reload the server while we do this request. Just reload the page.
+    if (Object.keys(status_data).length === 0) {
+      location.reload();
+      return;
+    }
+
+    if (status_data.attributes.convert_type != "text") {
+      if (status_data.attributes && status_data.attributes.md5_name && status_data.attributes.convert_type) {
+        const value = Math.min(0.2 + status_data.progress, 0.95);
+        set_file_progress(status_data.attributes.md5_name, status_data.attributes.convert_type, value);
       }
+    }
+
+    // Check if the task is complete
+    if (status_data.status === "completed") {
+      clearInterval(interval); // Stop checking once it's complete
+      console.log(`Task with ID ${task_id} is complete.`);
+      completedCallback();
+    } else if (status_data.status === "processing") {
+      console.log(`Task with ID ${task_id} is still processing.`);
+    } else if (status_data.status === "error") {
+      clearInterval(interval); // Stop checking on error
+      console.log(`Task with ID ${task_id} threw error, stopping.`);
+      errorCallback();
     } else {
       clearInterval(interval); // Stop checking on error
-      console.error(`Error checking task status for task ID ${task_id}: ${statusResponse.status}`);
+      console.error(`Unknown status for task with ID ${task_id}: ${status_data.status}`);
       errorCallback();
     }
   }, 2000); // Check every 2 seconds (adjust this as needed)
@@ -270,7 +303,7 @@ async function post_convert_file(file_data, conversion_type, conversion_options,
       const responseData = await response.json();
       const task_id = responseData.task_id;
 
-      checkTaskStatus(
+      start_check_task_interval(
         task_id,
         () => completeCallback(task_id),
         () => errorCallback(task_id),
@@ -363,7 +396,6 @@ window.addEventListener("load", async () => {
   }
 
   // Populate HTML with the associated files
-
   for (let i = 0; i < md5_files.length; i++) {
     // Iterate through all files string array, send a post request to our server at /pdf-to-text
     // Include the filename & md5_name of the file
@@ -389,8 +421,8 @@ window.addEventListener("load", async () => {
     }
   }
 
+  // Process all of our files, send respective requests to server.
   //TODO: Check our existing conversion_types with GET, to speed up files that might already be processed.
-
   for (let i = 0; i < md5_files.length; i++) {
     const md5_name = md5_files[i];
     const file_data = files_data[md5_name];
@@ -398,8 +430,10 @@ window.addEventListener("load", async () => {
     await new Promise((resolve) => {
       const completeCallback = (task_id) => {
         console.log("pfd2text callback done: " + task_id + " | " + file_data.filename);
+
         for (const conversion_type of file_data.conversion_types) {
           set_file_progress(file_data.md5_name, conversion_type, 0.2);
+
           post_convert_file(
             file_data,
             conversion_type,
@@ -415,13 +449,17 @@ window.addEventListener("load", async () => {
             },
           );
         }
+
         resolve();
       };
 
       const errorCallback = async (task_id) => {
         console.log("PDF2JSON callback error:");
+
         // The task was unsuccessful and an error occured! Tell that to the user..
-        console.log(file_data);
+        const status_data = await get_task_status_json(task_id);
+        files_data[md5_name].error_msg = status_data["attributes"]["error_msg"];
+
         for (const conversion_type of file_data.conversion_types) {
           set_file_status(md5_name, conversion_type, "error");
         }
