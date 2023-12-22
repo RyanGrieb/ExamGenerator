@@ -3,14 +3,14 @@
 
 
 * DECEMBER * (Improve output, Export features, User Accounts)
-0. Give user option to remove file from list (Delete cookie).
-0. Handle errors when we restart server while users are converting files.
-2. Give title to PDF export tab.
+1. Give user option to remove file from list (Delete cookie).
+2. Give title to PDF export tab. - Rewrite export feature, better flashcards to PDF, support keyword/definition to PDF, support test/quiz to PDF.
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
 5. Implement export to cheatsheet feature (For keyword: definition feature)
 6. Support PPTX files.
 7. Add user accounts (google integration, ect.)
 8. Saved documents for user accounts, regardless of cookies.
+
 * JANUARY * (Premium accounts, Look & Feel, SEO)
 9. Limit document generation for users w/o account, along with "free" users.
 10. Add "premium features" (Export options, filetypes, filesize, unlimited conversions)
@@ -18,10 +18,12 @@
 12. Fix SEO for google.
 13. Fix CSS to support mobile devices.
 14. Write up report on potential costs of API vs. hardware.
+
 * FEBRUARY * (Company, Marketing)
 14. Create LLC
 15. Legal shit? User data, uploaded docs, ect.?
 16. Start marketing
+
 * MARCH * (Email, Income Tracking)
 17. Create work email? @pdf2flashcards.com
 18. Shift payments to @pdf2flashcards.com
