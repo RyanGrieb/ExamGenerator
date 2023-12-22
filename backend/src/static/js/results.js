@@ -34,6 +34,7 @@ async function display_file_data(filename, md5_name, conversion_type) {
     const test_questions_set_div = document.createElement("div");
     for (const [index, test_question_set] of file_data.data[conversion_type].entries()) {
       const p_element = document.createElement("p");
+      p_element.className = "output-text";
       const question = test_question_set[1].replaceAll("\n", "<br>");
       const answer = test_question_set[2];
       p_element.innerHTML = `<b>${index + 1}.</b> ${question}<br><br>${answer}`;
@@ -50,6 +51,7 @@ async function display_file_data(filename, md5_name, conversion_type) {
     const keywords_sets_div = document.createElement("div");
     for (const keyword_set of file_data.data[conversion_type]) {
       const p_element = document.createElement("p");
+      p_element.className = "output-text";
       p_element.innerHTML = `<u>${keyword_set[0]}</u>: ${keyword_set[1]}`;
       keywords_sets_div.appendChild(p_element);
     }
@@ -81,6 +83,7 @@ async function display_file_data(filename, md5_name, conversion_type) {
       const qa_sets_div = document.createElement("div");
       for (const qa_set of file_data.data["flashcards"]) {
         const p_element = document.createElement("p");
+        p_element.className = "output-text";
         p_element.innerHTML = `${qa_set[0]} | ${qa_set[1]}`;
         qa_sets_div.appendChild(p_element);
       }

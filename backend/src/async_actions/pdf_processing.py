@@ -9,6 +9,17 @@ import openai
 import logging
 import traceback
 from .async_task import set_task_status, set_task_progress
+import re
+
+GPT_MODEL = "gpt-3.5-turbo-1106"
+
+
+def text_has_table_expression(text):
+    """
+    Check if the text has the pattern: 'Table xx.xx'.
+    """
+    pattern = r"Table \d+\.\d+"
+    return bool(re.search(pattern, text))
 
 
 def text_has_multiple_choice(text: str) -> bool:
@@ -90,7 +101,7 @@ def truncate2gpt_tokens(server: Quart, md5_name: str, pdf_text: str, just_split_
     truncated_pdf_text = []
     current_tokens = 0
     total_tokens = 0
-    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+    encoding = tiktoken.encoding_for_model(GPT_MODEL)
     for section in page_sections:
         num_tokens = len(encoding.encode(section))
 
@@ -227,8 +238,8 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
     logger.debug(f"*********************** Generate Test Questions from text chunk:\n{data}")
 
     prompt_values = {
-        "test_multiple_choice": "Multiple Choice. Multiple Choice Strict Format Example:\nWhich of the following is not a primary color? A) Red B) Yellow C) Green D) Purple -- Answer: D) Purple",
-        "test_true_false": "True/False",
+        "test_multiple_choice": "Multiple Choice (Include letter options in questions or DEATH happens!!!). Multiple Choice Strict Format Example:\nWhich of the following is not a primary color? A) Red B) Yellow C) Green D) Purple -- Answer: D) Purple",
+        "test_true_false": "True/False Questions",
         "test_free_response": "Free Response",
     }
 
@@ -236,11 +247,10 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
     for index, conversion_option in enumerate(conversion_options["test"]):
         prompt_options += f"{prompt_values[conversion_option]}\n"
 
-    # TODO: Provide examples based on prompt options (to improve formatting output.)
-    prompt = f"Create multiple test/quiz questions from data using the following question type:\n{prompt_options}\nYour responses should strictly follow this format:\n** [question_type] -- Question: [question] -- Answer: [answer]\nThe provided data is as follows:\n{data}"
+    prompt = f"Create a very large amount test/quiz questions from data using the following question type(s):\n{prompt_options}\nYour responses should strictly follow this format:\n** [question_type] -- Question: [question] -- Answer: [answer]\nThe provided data is as follows:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
-        model="gpt-3.5-turbo",
+        model=GPT_MODEL,
         messages=[
             # {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
@@ -248,7 +258,7 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
         temperature=0,
     )
     response_data: str = response["choices"][0]["message"]["content"]
-    # print(response_data, file=sys.stderr)
+    print(response_data, file=sys.stderr)
 
     test_questions = response_data.split("\n")
     # Remove empty lines
@@ -257,6 +267,10 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
     new_test_questions = []
     existing_questions = []
     existing_answers = []
+
+    # FIXME: Respones can be in like respeonse-scenario-a.txt, account for that before splitting our questions here.#
+    # Solution: Correct the formatting such that the code below works as intended.
+    # question = split_question[1].strip() throws an out of bound error in this scenario.
 
     for test_question in test_questions:
         print(f"TEST QUESTION: {test_question}", file=sys.stderr)
@@ -279,13 +293,18 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
         if "a primary color" in question:
             continue
 
+        # Edgecase: If the question references a table (e.g. Table 4.12), remove it since we cant see it.
+        # FIXME: Somehow get a screenshot of the table in the future?
+        if text_has_table_expression(question):
+            continue
+
         # Edgecase: Correct question_type if answer is of true false, yet question_type is multiple choice.
-        if (answer == "Answer: False" or answer == "Answer: True") and question_type == "Multiple Choice":
+        if (answer == "Answer: False" or answer == "Answer: True") and "Multiple Choice" in question_type:
             if not text_has_multiple_choice(question):
                 question_type = "True/False"
 
         # Edgecase: Include letter options for True/False if not present.
-        if question_type == "True/False" and "A) True" not in question:
+        if "True/False" in question_type and "A) True" not in question:
             question += "\nA) True\nB) False"
             if "True" in answer:
                 answer = "Answer: A) True"
@@ -293,7 +312,7 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
                 answer = "Answer: B) False"
 
         # Edgecase: Add newline fomatting for multiple choice questions after each letter option
-        if question_type == "Multiple Choice":
+        if "Multiple Choice" in question_type:
             string_list = list(question)
             string_list_copy = list(string_list)
             opened_p_count = 0
@@ -329,7 +348,7 @@ async def gpt_generate_definitions(server, md5_name, data):
     prompt = f"Please analyze the data and provide 'keyword: definition' pairs relevant for study. Your responses should strictly follow this format without numbering:\nKeyword: Definition\nDo NOT include the words 'Keyword' or 'Definition' in the output. The provided data is as follows:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
-        model="gpt-3.5-turbo",
+        model=GPT_MODEL,
         messages=[
             # {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
@@ -349,7 +368,12 @@ async def gpt_generate_definitions(server, md5_name, data):
             continue
         keyword = definition_pair.split(":", 1)[0].strip()
         definition = definition_pair.split(":", 1)[1].strip()
+
         if keyword in existing_keywords or definition in existing_definitions:
+            continue
+
+        # Edgecase: If definition references a table (e.g. Table 4.12), remove it since we can't see it.
+        if text_has_table_expression(definition):
             continue
 
         existing_definitions.append(definition)
@@ -372,7 +396,7 @@ async def gpt_generate_qa(server, md5_name, data):
     prompt = f"Generate brief, clever Q&A flashcards each page from the following UNORDERED tokens. Generate very short questions and answers, as these are meant to be flashcards. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
-        model="gpt-3.5-turbo",
+        model=GPT_MODEL,
         messages=[
             # {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
@@ -415,6 +439,11 @@ async def gpt_generate_qa(server, md5_name, data):
 
         # We have a duplicate, remove it! (By not appending anything!)
         if question in existing_questions and answer in existing_answers:
+            continue
+
+        # Edgecase: If the question references a table (e.g. Table 4.12), remove it since we cant see it.
+        # FIXME: Somehow get a screenshot of the table in the future?
+        if text_has_table_expression(question):
             continue
 
         new_qa_sets.append([question, answer])
