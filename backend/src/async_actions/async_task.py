@@ -25,6 +25,20 @@ class AsyncTask:
 running_checker = False
 running_tasks: dict[str, AsyncTask] = {}
 
+"""Write a function that allows us to await fun() if there is a running task with attribute key x and value y"""
+
+
+"""
+Async function that waits until a task with a specified attribute key & value is completed.
+"""
+
+
+async def await_task(task_id):
+    task = running_tasks[task_id]
+    while task.status != "completed":
+        await asyncio.sleep(1)
+        task = running_tasks[task_id]
+
 
 def set_task_attribute(task_id: str, key: str, value: object):
     if task_id not in running_tasks:

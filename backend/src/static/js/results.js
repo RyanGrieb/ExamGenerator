@@ -44,7 +44,6 @@ async function display_file_data(filename, md5_name, conversion_type) {
 
     // Construct Test Question/Answer pairs
     const test_questions_set_div = document.createElement("div");
-    console.log(file_data);
     for (const [index, test_question_set] of file_data.data[conversion_type].entries()) {
       const p_element = document.createElement("p");
       p_element.className = "output-text";

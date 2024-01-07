@@ -10,6 +10,7 @@ import logging
 import traceback
 from .async_task import set_task_status, set_task_progress, set_task_attribute
 import re
+from filelock import FileLock
 
 GPT_MODEL = "gpt-3.5-turbo-1106"
 
@@ -258,7 +259,7 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
         temperature=0,
     )
     response_data: str = response["choices"][0]["message"]["content"]
-    print(response_data, file=sys.stderr)
+    # print(response_data, file=sys.stderr)
 
     test_questions = response_data.split("\n")
     # Remove empty lines
@@ -273,7 +274,7 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
     # question = split_question[1].strip() throws an out of bound error in this scenario.
 
     for test_question in test_questions:
-        print(f"TEST QUESTION: {test_question}", file=sys.stderr)
+        # print(f"TEST QUESTION: {test_question}", file=sys.stderr)
         split_question = test_question.split("--")
         question_type = split_question[0].split("**", 1)[1].strip()
         question = split_question[1].strip()
@@ -346,7 +347,7 @@ async def gpt_generate_definitions(server, md5_name, data):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: gpt_generate_definitions")
 
-    print(f"*********************** Generate Definitions from text chunk:\n{data}")
+    # print(f"*********************** Generate Definitions from text chunk:\n{data}")
     logger.debug(f"*********************** Generate Definitions from text chunk:\n{data}")
 
     prompt = f"Please analyze the data and provide 'keyword: definition' pairs relevant for study. Your responses should strictly follow this format without numbering:\nKeyword: Definition\nDo NOT include the words 'Keyword' or 'Definition' in the output. The provided data is as follows:\n{data}"
@@ -394,7 +395,7 @@ async def gpt_generate_qa(server, md5_name, data):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: gpt_generate_qa")
 
-    print(f"*********************** Generate Q&A from text chunk:\n{data}")
+    # print(f"*********************** Generate Q&A from text chunk:\n{data}")
     logger.debug(f"*********************** Generate Q&A from text chunk:\n{data}")
 
     prompt = f"Generate brief, clever Q&A flashcards each page from the following UNORDERED tokens. Generate very short questions and answers, as these are meant to be flashcards. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
@@ -412,10 +413,10 @@ async def gpt_generate_qa(server, md5_name, data):
     # Edgecase: Sometimes GPT returns Q&A set with [NEWLINE] instead of '\n'. Handle it accordingly.
     response_data = response_data.replace("[NEWLINE]", "\n")
 
-    print("*********************** GPT Q&A RESPONSE DATA:")
+    # print("*********************** GPT Q&A RESPONSE DATA:")
     logger.debug("*********************** GPT Q&A RESPONSE DATA:")
 
-    print(response_data)
+    # print(response_data)
     logger.debug(response_data)
 
     # Edgecase: ??? Forgot. my bad.
@@ -426,7 +427,7 @@ async def gpt_generate_qa(server, md5_name, data):
     qa_sets = [qa_set for qa_set in qa_sets if qa_set != ""]
 
     if len(qa_sets) % 2 != 0:
-        print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a, or additional output.)!!!")
+        print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a, or additional output.)!!!", file=sys.stderr)
         logger.warn("UNEVEN Q&A RESPONSE (mssing q or a)!!")
 
     # Remove any lines not containing Q: or A:.
@@ -475,7 +476,6 @@ async def async_pdf2json(
     try:
         # Check if the variables are received correctly
         logger.info("Function: async_pdf2json")
-        print(f"Uploader: {ip_address}")
         print(f"Uploader: {ip_address}", file=sys.stderr)
         # logger.debug(f"Uploader: {ip_address}")
         logger.debug(f"Received filename: {filename}")
@@ -523,8 +523,7 @@ async def async_pdf2json(
 
                     with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w") as file:
                         file.write(response_text)
-
-                    set_task_status(task_id, "completed")
+                        set_task_status(task_id, "completed")
                 else:
                     await asyncio.sleep(1)
                     logger.error(response.text)
@@ -544,19 +543,19 @@ async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: 
     logger.info("Function: async_json2test")
 
     try:
+        # Create directory if it doesn't exist.
+        os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
         processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
-        processed_json = {}
 
-        # Check if file already exists and test questions for it was generated, if so, set the task status as completed
-        if os.path.isfile(processed_file):
-            with open(processed_file, "r") as file:
-                processed_json = json.load(file)
-
-            if "test" in processed_json:
-                # TODO: Apply conversion_options in the JSON, check if they match and re-do it if not.
-                logger.debug(f"Test already exists for {filename}, returning...")
-                set_task_status(task_id, "completed")
-                return
+        with FileLock(f"{processed_file}.lock"):
+            # Check if file already exists and test questions for it was generated, if so, set the task status as completed
+            if os.path.isfile(processed_file):
+                with open(processed_file, "r") as file:
+                    if "test" in json.load(file):
+                        # TODO: Apply conversion_options in the JSON, check if they match and re-do it if not.
+                        logger.debug(f"Test already exists for {filename}, returning...")
+                        set_task_status(task_id, "completed")
+                        return
 
         pdf_text = json2text(server, md5_name)
 
@@ -574,21 +573,12 @@ async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: 
             generated_test_questions = generated_test_questions + test_questions
             set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
 
-        # Save test questions set to filesystem
-        # Create directory if it doesn't exist.
-        if not os.path.exists(server.config["PROCESSED_FOLDER"]):
-            os.makedirs(server.config["PROCESSED_FOLDER"])
-
-        processed_json["test"] = generated_test_questions
-
-        with open(processed_file, "w") as file:
-            json.dump(processed_json, file)
-
+        append_json_value_to_file(processed_file, "test", generated_test_questions)
         set_task_status(task_id, "completed")
-        logger.debug("Definition Generation Successful.")
+        logger.debug("Test Generation Successful.")
 
     except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.tb_lineno}"
+        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
         print(error_message, file=sys.stderr)
         logger.error(error_message)
         logger.error(traceback.format_exc())
@@ -600,18 +590,18 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
     logger.info("Function: async_json2keywords")
 
     try:
+        # Create directory if it doesn't exist.
+        os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
         processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
-        processed_json = {}
 
-        # Check if file already exists and q&a for it was generated, if so, set the task status as completed
-        if os.path.isfile(processed_file):
-            with open(processed_file, "r") as file:
-                processed_json = json.load(file)
-
-            if "keywords" in processed_json:
-                logger.debug(f"Definition already exists for {filename}, returning...")
-                set_task_status(task_id, "completed")
-                return
+        with FileLock(f"{processed_file}.lock"):
+            # Check if file already exists and q&a for it was generated, if so, set the task status as completed
+            if os.path.isfile(processed_file):
+                with open(processed_file, "r") as file:
+                    if "keywords" in json.load(file):
+                        logger.debug(f"Definition already exists for {filename}, returning...")
+                        set_task_status(task_id, "completed")
+                        return
 
         pdf_text = json2text(server, md5_name)
 
@@ -629,21 +619,12 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
             generated_definitions = generated_definitions + definitions
             set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
 
-        # Save Q&A set to filesystem
-        # Create directory if it doesn't exist.
-        if not os.path.exists(server.config["PROCESSED_FOLDER"]):
-            os.makedirs(server.config["PROCESSED_FOLDER"])
-
-        processed_json["keywords"] = generated_definitions
-
-        with open(processed_file, "w") as file:
-            json.dump(processed_json, file)
-
+        append_json_value_to_file(processed_file, "keywords", generated_definitions)
         set_task_status(task_id, "completed")
         logger.debug("Definition Generation Successful.")
 
     except Exception as e:
-        error_message = f"Error: {str(e)} at line ???"
+        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
         print(error_message, file=sys.stderr)
         logger.error(error_message)
         logger.error(traceback.format_exc())
@@ -652,21 +633,21 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
 
 async def async_json2flashcards(server: Quart, filename: str, md5_name: str, task_id: str):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
-    logger.info("Function: async_json2flashcards")
+    logger.info("Function: async_json2flashcard")
 
     try:
+        # Create directory if it doesn't exist.
+        os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
         processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
-        processed_json = {}
 
-        # Check if file already exists and q&a for it was generated, if so, set the task status as completed
-        if os.path.isfile(processed_file):
-            with open(processed_file, "r") as file:
-                processed_json = json.load(file)
-
-            if "flashcards" in processed_json:
-                logger.debug(f"Flashcards already exists for {filename}, returning...")
-                set_task_status(task_id, "completed")
-                return
+        with FileLock(f"{processed_file}.lock"):
+            # Check if file already exists and q&a for it was generated, if so, set the task status as completed
+            if os.path.isfile(processed_file):
+                with open(processed_file, "r") as file:
+                    if "flashcards" in json.load(file):
+                        logger.debug(f"Flashcards already exists for {filename}, returning...")
+                        set_task_status(task_id, "completed")
+                        return
 
         pdf_text = json2text(server, md5_name)
 
@@ -684,22 +665,28 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
             generated_qa = generated_qa + qa
             set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
 
-        # Save Q&A set to filesystem
-        # Create directory if it doesn't exist.
-        if not os.path.exists(server.config["PROCESSED_FOLDER"]):
-            os.makedirs(server.config["PROCESSED_FOLDER"])
-
-        processed_json["flashcards"] = generated_qa
-
-        with open(processed_file, "w") as file:
-            json.dump(processed_json, file)
-
+        append_json_value_to_file(processed_file, "flashcards", generated_qa)
         set_task_status(task_id, "completed")
         logger.debug("Flashcard Generation Successful.")
 
     except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.tb_lineno}"
+        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
         print(error_message, file=sys.stderr)
         logger.error(error_message)
         logger.error(traceback.format_exc())
         set_task_status(task_id, "error")
+
+
+def append_json_value_to_file(filename: str, key: str, value: object):
+    processed_json = {}
+
+    with FileLock(f"{filename}.lock"):
+        if os.path.isfile(filename):
+            with open(filename, "r") as file:
+                processed_json = json.load(file)
+
+        processed_json[key] = value
+
+        # Save Q&A set to filesystem
+        with open(filename, "w") as file:
+            json.dump(processed_json, file)
