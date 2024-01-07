@@ -331,6 +331,10 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
 
             question = "".join(string_list)
 
+        # Edgecase: Remove 'Question:' 'Answer:' substrings - They can be implemented clientside.
+        question = question.replace("Question: ", "", 1)
+        answer = answer.replace("Answer: ", "", 1)
+
         new_test_questions.append([question_type, question, answer])
         existing_questions.append(question)
         existing_answers.append(answer)
@@ -445,6 +449,10 @@ async def gpt_generate_qa(server, md5_name, data):
         # FIXME: Somehow get a screenshot of the table in the future?
         if text_has_table_expression(question):
             continue
+
+        # Edgecase: Remove any 'Q: ' 'A: ' substrings. We want to append these client-side.
+        question = question.replace("Q: ", "")
+        answer = answer.replace("A: ", "")
 
         new_qa_sets.append([question, answer])
         existing_questions.append(question)

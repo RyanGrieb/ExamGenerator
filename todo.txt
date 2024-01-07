@@ -4,6 +4,9 @@
 
 * DECEMBER * (Improve output, Export features, User Accounts)
 1. Give user option to remove file from list (Delete cookie).
+1. Have files saved in cookies load faster (Try a get request first when loading files.)
+2. Export test/quiz to google forms. Export UI, question selection/editor.
+
 2. Give title to PDF export tab. - Rewrite export feature, better flashcards to PDF, support keyword/definition to PDF, support test/quiz to PDF.
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
 5. Implement export to cheatsheet feature (For keyword: definition feature)

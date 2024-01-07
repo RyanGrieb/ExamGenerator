@@ -211,9 +211,20 @@ def get_convert_file():
     md5_name = request.args.get("md5_name")
     conversion_type = request.args.get("conversion_type")
     print(f"Convertfile GET - Get {conversion_type} of {filename}", file=sys.stderr)
+
     if filename and md5_name and conversion_type:
-        with open(f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json', "r") as file:
-            return json.load(file)[conversion_type]
+        file_path = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
+        try:
+            with open(file_path, "r") as file:
+                data = json.load(file)
+                if conversion_type in data:
+                    return data[conversion_type]
+                else:
+                    return f"Conversion type '{conversion_type}' not found", 400
+        except FileNotFoundError:
+            return f"File '{file_path}' not found", 404
+        except Exception as e:
+            return f"Error: {str(e)}", 500
     else:
         return "Missing parameters", 400
 
