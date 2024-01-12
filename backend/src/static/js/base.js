@@ -26,6 +26,40 @@ function add_to_list_cookie(cookie_name, list_object) {
   }
 }
 
+// Removes document based on md5 & conversion type from cookie list "files"
+function remove_document_cookie(md5_name, conversion_type) {
+  const files_cookie = Cookies.get("files");
+
+  if (files_cookie === undefined) {
+    return;
+  }
+
+  const files = JSON.parse(files_cookie);
+  // find the index of the list_object in the array
+  console.log(files);
+  const index_to_remove = files.findIndex((item) => item.md5_name === md5_name);
+  console.log(index_to_remove);
+
+  // remove the element if found
+  if (index_to_remove !== -1) {
+    const file = files[index_to_remove];
+    const updated_conversion_types = file.conversion_types.filter((type) => type !== conversion_type);
+
+    // Remove the file entirely if the conversion_types list becomes empty
+    if (updated_conversion_types.length === 0) {
+      files.splice(index_to_remove, 1);
+    } else {
+      // Update the conversion_types list
+      file.conversion_types = updated_conversion_types;
+      files[index_to_remove] = file;
+    }
+
+    Cookies.set("files", JSON.stringify(files));
+    console.log("NEW COOKIES:");
+    console.log(Cookies.get("files"));
+  }
+}
+
 window.addEventListener("load", () => {
   highlight_navbar();
 });

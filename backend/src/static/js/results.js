@@ -9,6 +9,7 @@ class FileData {
   }
 }
 
+let selected_document = undefined;
 let md5_files = [];
 let files_data = {};
 let progress_bars = {};
@@ -147,10 +148,6 @@ function add_qa_set_to_page(filename, md5_name, qa_set, final_generation = false
     paragraph.innerHTML = line;
     qaSetDiv.appendChild(paragraph);
   });
-}
-
-function on_export_click() {
-  post_export_results(file_names, md5_names, "pdf");
 }
 
 // Tell the server to convert specific files to a specific export_type
@@ -378,6 +375,23 @@ function set_file_status(md5_name, conversion_type, iconName) {
   }
 }
 
+function on_export_click() {
+  console.log("TODO: Export file");
+}
+
+function remove_document() {
+  const md5_name = selected_document.md5_name;
+  const conversion_type = selected_document.conversion_type;
+
+  // Remove from HTML
+  const file_list = document.querySelector(`.results-${conversion_type} ul`);
+  const list_item = document.getElementById(`li-${md5_name}-${conversion_type}`);
+  file_list.removeChild(list_item);
+
+  // Remove from cookie
+  remove_document_cookie(md5_name, conversion_type);
+}
+
 window.addEventListener("load", async () => {
   files_cookie = Cookies.get("files");
 
@@ -414,6 +428,15 @@ window.addEventListener("load", async () => {
 
       list_item.onclick = () => {
         display_file_data(filename, md5_name, conversion_type);
+
+        document.querySelectorAll(".results-files li").forEach((item) => {
+          item.style.backgroundColor = "white";
+        });
+
+        list_item.style.backgroundColor = "#ccd1d9";
+        document.querySelector(".results-options").style.display = "flex";
+        document.querySelector(".results-select-prompt").style.display = "none";
+        selected_document = { md5_name: md5_name, conversion_type: conversion_type };
       };
       file_list.appendChild(list_item);
 

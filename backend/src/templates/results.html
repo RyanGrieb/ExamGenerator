@@ -8,7 +8,6 @@
     <div class="results-files">
         <div class="results-files-header">
             <h2>Documents</h2>
-            <button class="button-1">Export</button>
         </div>
         <div class="results-flashcards">
             <p><b>Flashcards:</b></p>
@@ -26,7 +25,16 @@
             </ul>
         </div>
     </div>
-    <div class="results-output"></div>
+    <div style="width: 100%;">
+        <div class="results-options" style="display: none;">
+            <button class="button-1" onclick="remove_document()">Remove</button>
+            <button class="button-1" onclick="on_export_click()">Export</button>
+            <button class="button-1">AI Chat Tool</button>
+        </div>
+        <p class="results-select-prompt" style="text-align: center;">Select a document from the list on the left to view
+            a file.</p>
+        <div class="results-output"></div>
+    </div>
 </div>
 
 {% endblock %}
