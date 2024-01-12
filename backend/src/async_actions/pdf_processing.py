@@ -13,6 +13,7 @@ import re
 from filelock import FileLock
 
 GPT_MODEL = "gpt-3.5-turbo-1106"
+pdf2json_processes = 0
 
 
 def text_has_table_expression(text):
@@ -472,7 +473,10 @@ async def async_pdf2json(
     task_id: str,
     ip_address: str,
 ):
+    global pdf2json_processes
+
     logger: logging.Logger = get_logger_for_file(server, md5_name)
+    process_limit = server.config["CONCURRENT_TEXT_PROCESS_LIMIT"]
     try:
         # Check if the variables are received correctly
         logger.info("Function: async_pdf2json")
@@ -510,6 +514,12 @@ async def async_pdf2json(
 
         headers = {"accept": "application/json"}
 
+        # Wait until process_limit goes back down
+        while pdf2json_processes >= process_limit:
+            await asyncio.sleep(1)
+
+        pdf2json_processes += 1
+
         async with aiohttp.ClientSession() as session:
             async with session.post(server.config["UNSTRUCTUED_API_URL"], headers=headers, data=form_data) as response:
                 if response.status == 200:
@@ -524,11 +534,13 @@ async def async_pdf2json(
                     with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w") as file:
                         file.write(response_text)
                         set_task_status(task_id, "completed")
+                        pdf2json_processes -= 1
                 else:
                     await asyncio.sleep(1)
                     logger.error(response.text)
                     print(response.text, file=sys.stderr)
                     set_task_status(task_id, "error")
+                    pdf2json_processes -= 1
 
     except Exception as e:
         # Handle exceptions or errors here

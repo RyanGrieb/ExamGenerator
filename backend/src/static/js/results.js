@@ -255,6 +255,7 @@ async function start_check_task_interval(task_id, completedCallback, errorCallba
   }, 2000); // Check every 2 seconds (adjust this as needed)
 }
 
+// Updates the HTML from the get request. Returns 'ok' if successful or 'error_type' if error occurs.
 async function get_converted_file(file_data, conversion_type) {
   console.log("Fetch generated file set from server:");
 
@@ -275,6 +276,13 @@ async function get_converted_file(file_data, conversion_type) {
     console.log(json_data);
     file_data.data[conversion_type] = json_data;
     set_file_status(file_data.md5_name, conversion_type, "checkmark-done");
+
+    return "ok";
+  } else {
+    // Extract error type from JSON response
+    let error_data = await response.json();
+    console.log(error_data);
+    return error_data.error_type;
   }
 }
 
@@ -390,6 +398,16 @@ function remove_document() {
 
   // Remove from cookie
   remove_document_cookie(md5_name, conversion_type);
+
+  clear_file_results();
+}
+
+function clear_file_results() {
+  const results_output = document.querySelector(".results-output");
+  results_output.innerHTML = "";
+  document.querySelector(".results-options").style.display = "none";
+  document.querySelector(".results-select-prompt").style.display = "block";
+  selected_document = undefined;
 }
 
 window.addEventListener("load", async () => {
@@ -445,16 +463,38 @@ window.addEventListener("load", async () => {
   }
 
   // Process all of our files, send respective requests to server.
-  //TODO: Check our existing conversion_types with GET, to speed up files that might already be processed.
   for (let i = 0; i < md5_files.length; i++) {
     const md5_name = md5_files[i];
     const file_data = files_data[md5_name];
 
-    await new Promise((resolve) => {
-      const completeCallback = (task_id) => {
-        console.log("pfd2text callback done: " + task_id + " | " + file_data.filename);
+    for (const conversion_type of file_data.conversion_types) {
+      const response = await get_converted_file(file_data, conversion_type);
 
-        for (const conversion_type of file_data.conversion_types) {
+      // Text exists for file, but has not been converted yet given type.
+      if (response === "no_conversion") {
+        set_file_progress(file_data.md5_name, conversion_type, 0.2);
+
+        post_convert_file(
+          file_data,
+          conversion_type,
+          file_data.conversion_options,
+          () => {
+            //Completion callback
+            console.log("Completed file conversion");
+            get_converted_file(file_data, conversion_type);
+          },
+          () => {
+            //Error callback
+            console.log("Error occurred when converting file");
+          },
+        );
+      }
+
+      // This file has not been proccessed at all.
+      if (response === "no_file") {
+        const completeCallback = (task_id) => {
+          console.log("pfd2text callback done: " + task_id + " | " + file_data.filename);
+
           set_file_progress(file_data.md5_name, conversion_type, 0.2);
 
           post_convert_file(
@@ -471,25 +511,22 @@ window.addEventListener("load", async () => {
               console.log("Error occurred when converting file");
             },
           );
-        }
+        };
 
-        resolve();
-      };
+        const errorCallback = async (task_id) => {
+          console.log("PDF2JSON callback error:");
 
-      const errorCallback = async (task_id) => {
-        console.log("PDF2JSON callback error:");
+          // The task was unsuccessful and an error occured! Tell that to the user..
+          const status_data = await get_task_status_json(task_id);
+          files_data[md5_name].error_msg = status_data["attributes"]["error_msg"];
 
-        // The task was unsuccessful and an error occured! Tell that to the user..
-        const status_data = await get_task_status_json(task_id);
-        files_data[md5_name].error_msg = status_data["attributes"]["error_msg"];
+          for (const conversion_type of file_data.conversion_types) {
+            set_file_status(md5_name, conversion_type, "error");
+          }
+        };
 
-        for (const conversion_type of file_data.conversion_types) {
-          set_file_status(md5_name, conversion_type, "error");
-        }
-        resolve();
-      };
-
-      post_convert_file(file_data, "text", {}, completeCallback, errorCallback);
-    });
+        post_convert_file(file_data, "text", {}, completeCallback, errorCallback);
+      }
+    }
   }
 });

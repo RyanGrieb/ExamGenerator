@@ -51,7 +51,6 @@ function remove_document_cookie(md5_name, conversion_type) {
     } else {
       // Update the conversion_types list
       file.conversion_types = updated_conversion_types;
-      files[index_to_remove] = file;
     }
 
     Cookies.set("files", JSON.stringify(files));

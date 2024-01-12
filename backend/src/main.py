@@ -4,8 +4,8 @@ import openai
 import hashlib
 import uuid
 import json
+from .async_actions import pdf_processing
 from .async_actions.exporter import export_files
-from .async_actions.pdf_processing import *
 from .async_actions.async_task import *
 from quart import Quart, Request, render_template, flash, request, redirect, url_for, session, jsonify, send_file
 from werkzeug.utils import secure_filename
@@ -19,6 +19,7 @@ PROCESSED_FOLDER = "./data/file-processed"
 LOG_FOLDER = "./data/file-log"
 EXPORT_FOLDER = "./data/exports"
 ALLOWED_EXTENSIONS = {"pdf"}
+CONCURRENT_TEXT_PROCESS_LIMIT = 2  # How many files unstructured API can handle at a time.
 
 
 # Configure quart
@@ -30,6 +31,7 @@ server.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
 server.config["LOG_FOLDER"] = LOG_FOLDER
 server.config["EXPORT_FOLDER"] = EXPORT_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
+server.config["CONCURRENT_TEXT_PROCESS_LIMIT"] = CONCURRENT_TEXT_PROCESS_LIMIT
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 # server.jinja_env.globals.update(zip=zip)
 # Prevent flask form emptying session variables
@@ -102,6 +104,11 @@ async def home():
         return await upload_file(request)
 
     return await render_template("index.html", last_updated=dir_last_updated("./src/static"))
+
+
+@server.route("/pdf2json-processes", methods=["GET"])
+async def get_pdf2json_processes():
+    return {"processes": pdf_processing.pdf2json_processes}
 
 
 # @server.errorhandler(404)
@@ -220,13 +227,18 @@ def get_convert_file():
                 if conversion_type in data:
                     return data[conversion_type]
                 else:
-                    return f"Conversion type '{conversion_type}' not found", 400
+                    return (
+                        jsonify(
+                            {"error": f"Conversion type '{conversion_type}' not found", "error_type": "no_conversion"}
+                        ),
+                        400,
+                    )
         except FileNotFoundError:
-            return f"File '{file_path}' not found", 404
+            return jsonify({"error": f"File '{file_path}' not found", "error_type": "no_file"}), 404
         except Exception as e:
-            return f"Error: {str(e)}", 500
+            return jsonify({"error": f"Error: {str(e)}", "error_type": "unknown"}), 500
     else:
-        return "Missing parameters", 400
+        return jsonify({"error": "Missing parameters", "error_type": "missing_params"}), 400
 
 
 @server.route("/convertfile", methods=["POST"])
@@ -251,7 +263,7 @@ async def post_convert_file():
         match convert_type:
             case "text":
                 server.add_background_task(
-                    async_pdf2json,
+                    pdf_processing.async_pdf2json,
                     server,
                     filename,
                     md5_name,
@@ -260,7 +272,7 @@ async def post_convert_file():
                 )
             case "flashcards":
                 server.add_background_task(
-                    async_json2flashcards,
+                    pdf_processing.async_json2flashcards,
                     server,
                     filename,
                     md5_name,
@@ -268,7 +280,7 @@ async def post_convert_file():
                 )
             case "keywords":
                 server.add_background_task(
-                    async_json2keywords,
+                    pdf_processing.async_json2keywords,
                     server,
                     filename,
                     md5_name,
@@ -276,7 +288,7 @@ async def post_convert_file():
                 )
             case "test":
                 server.add_background_task(
-                    async_json2test,
+                    pdf_processing.async_json2test,
                     server,
                     filename,
                     md5_name,
