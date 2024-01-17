@@ -543,6 +543,17 @@ input[type="submit"] {
   padding: 10px;
 }
 
+.export-buttons {
+  display: flex;
+  flex-direction: row;
+}
+
+.export-button {
+  position: relative;
+  text-align: center;
+  color: white;
+}
+
 /* The typing effect */
 @keyframes typing {
   from {

@@ -384,7 +384,7 @@ function set_file_status(md5_name, conversion_type, iconName) {
 }
 
 function on_export_click() {
-  console.log("TODO: Export file");
+  window.location.href = `/export-flashcard?filename=${selected_document.filename}&md5_name=${selected_document.md5_name}`;
 }
 
 function remove_document() {
@@ -454,7 +454,7 @@ window.addEventListener("load", async () => {
         list_item.style.backgroundColor = "#ccd1d9";
         document.querySelector(".results-options").style.display = "flex";
         document.querySelector(".results-select-prompt").style.display = "none";
-        selected_document = { md5_name: md5_name, conversion_type: conversion_type };
+        selected_document = { filename: filename, md5_name: md5_name, conversion_type: conversion_type };
       };
       file_list.appendChild(list_item);
 

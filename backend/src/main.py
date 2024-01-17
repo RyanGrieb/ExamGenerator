@@ -159,6 +159,12 @@ async def get_logs(md5_name):
         )
 
 
+@server.route("/export-flashcard", methods=["GET"])
+async def export_flashcard():
+    filename = request.args.get("filename")
+    md5_name = request.args.get("md5_name")
+    return await render_template("export-flashcard.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static"))
+
 # Get the export file of the associated <file> name.
 @server.route("/exports/<file>", methods=["GET"])
 async def get_exported_document(file):
