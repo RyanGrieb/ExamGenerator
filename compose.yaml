@@ -48,6 +48,7 @@ services:
     restart: always
     secrets:
       - db-password
+      - stripe
     # We use 'volumes' here for immediate file changes
     # ./backend: is where your local backend code resides
     # /code is the directory specified in the Dockerfile, inside the container
@@ -77,8 +78,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    secrets:
-      - redis-password
 
 volumes:
   db-data:
@@ -86,8 +85,8 @@ volumes:
 secrets:
   db-password:
     file: db/password.txt
-  redis-password:
-    file: redis/password.txt
+  stripe:
+    file: stripe/keys.txt
 
 networks:
   backnet:

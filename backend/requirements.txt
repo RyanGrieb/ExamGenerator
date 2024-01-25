@@ -11,3 +11,4 @@ quart-session==2.0.0
 reportlab==4.0.6
 filelock==3.13.1
 redis==4.4.0
+stripe==8.0.0

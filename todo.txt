@@ -1,3 +1,10 @@
+* ASAP *
+- Payment processing
+- Save uploaded files w/ user account in DB.
+- Determine how much OpenAI API costs
+
+
+
 * ??? - Need to reproduce *
 0. Edgecase: Remove '-' at beginning of keyword for keyword/definition generation
 

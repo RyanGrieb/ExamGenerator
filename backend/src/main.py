@@ -4,6 +4,7 @@ import openai
 import hashlib
 import uuid
 import json
+import stripe
 from .async_actions import pdf_processing
 from .async_actions.exporter import export_files
 from .async_actions.async_task import *
@@ -40,11 +41,20 @@ server.config["SESSION_TYPE"] = "redis"
 server.config["SESSION_URI"] = "redis://redis:6379"
 Session(server)
 
+# Setup stripe
+# /run/secrets/stripe
+stripe_keys = {}
+with open("/run/secrets/stripe", "r") as file:
+    for line in file:
+        key, value = line.strip().split("=")
+        stripe_keys[key] = value
+
+# Set up Stripe with the API keys
+stripe.api_key = stripe_keys["private"]
 
 # server.jinja_env.globals.update(zip=zip)
 # Prevent flask form emptying session variables
 # server.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
-conn = None
 
 # Configure OpenAI GPT
 openai.api_key = OPENAI_API_KEY
@@ -186,6 +196,9 @@ async def logout():
 
 @server.route("/profile", methods=["GET"])
 async def profile():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
     return await render_template("profile.html", last_updated=dir_last_updated("./src/static"))
 
 
