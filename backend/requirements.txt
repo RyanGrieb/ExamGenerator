@@ -10,3 +10,4 @@ quart-cors==0.7.0
 quart-session==2.0.0
 reportlab==4.0.6
 filelock==3.13.1
+redis==4.4.0

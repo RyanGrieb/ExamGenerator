@@ -63,6 +63,22 @@ services:
         condition: service_healthy
       unstructured-api:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - backnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    secrets:
+      - redis-password
 
 volumes:
   db-data:
@@ -70,6 +86,8 @@ volumes:
 secrets:
   db-password:
     file: db/password.txt
+  redis-password:
+    file: redis/password.txt
 
 networks:
   backnet:

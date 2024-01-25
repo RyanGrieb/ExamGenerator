@@ -399,7 +399,7 @@ async def gpt_generate_qa(server, md5_name, data):
     # print(f"*********************** Generate Q&A from text chunk:\n{data}")
     logger.debug(f"*********************** Generate Q&A from text chunk:\n{data}")
 
-    prompt = f"Generate brief, clever Q&A flashcards each page from the following UNORDERED tokens. Generate very short questions and answers, as these are meant to be flashcards. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
+    prompt = f"Generate brief, clever Q&A flashcards each page from the following UNORDERED tokens. Generate very short questions and answers, as these are meant to be flashcards. If multiple bullet points on a topic are present, ensure relevant flashcards for each bullet point are created. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
         model=GPT_MODEL,

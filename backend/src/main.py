@@ -8,8 +8,9 @@ from .async_actions import pdf_processing
 from .async_actions.exporter import export_files
 from .async_actions.async_task import *
 from quart import Quart, Request, render_template, flash, request, redirect, url_for, session, jsonify, send_file
+from quart_session import Session
 from werkzeug.utils import secure_filename
-
+from .database import DBManager
 
 UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
 OPENAI_API_KEY = "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"
@@ -33,6 +34,13 @@ server.config["EXPORT_FOLDER"] = EXPORT_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
 server.config["CONCURRENT_TEXT_PROCESS_LIMIT"] = CONCURRENT_TEXT_PROCESS_LIMIT
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
+
+# Setup redis
+server.config["SESSION_TYPE"] = "redis"
+server.config["SESSION_URI"] = "redis://redis:6379"
+Session(server)
+
+
 # server.jinja_env.globals.update(zip=zip)
 # Prevent flask form emptying session variables
 # server.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
@@ -116,14 +124,69 @@ async def get_pdf2json_processes():
 #    return redirect("/")
 
 
-@server.route("/register", methods=["GET"])
+@server.route("/register", methods=["GET", "POST"])
 async def register():
+    if request.method == "POST":
+        form_data = await request.form
+        form_dict = dict(form_data)
+
+        email = form_dict.get("email")
+        password = form_dict.get("password")
+        confirm_password = form_dict.get("confirm_password")
+
+        if password != confirm_password:
+            return await render_template(
+                "register.html", last_updated=dir_last_updated("./src/static"), error_msg="Passwords do not match"
+            )
+
+        database = DBManager(pass_file="/run/secrets/db-password")
+        response, error_msg = database.add_user(email, password)
+
+        if response != 0:
+            return await render_template(
+                "register.html", last_updated=dir_last_updated("./src/static"), error_msg=error_msg
+            )
+
+        return redirect(url_for("login"))
+
     return await render_template("register.html", last_updated=dir_last_updated("./src/static"))
 
 
-@server.route("/login", methods=["GET"])
+@server.route("/login", methods=["GET", "POST"])
 async def login():
+    if request.method == "POST":
+        print("Hi", file=sys.stderr)
+        form_data = await request.form
+        form_dict = dict(form_data)
+        email = form_dict.get("email")
+        password = form_dict.get("password")
+
+        # Check if the email and password match a user in the database
+        database = DBManager(pass_file="/run/secrets/db-password")
+        response, error_msg = database.check_user(email, password)
+        print(response, file=sys.stderr)
+        if response == 0:
+            session["logged_in"] = True
+            session["email"] = email
+            session.modified = True
+            return redirect("/")
+        else:
+            # User doesn't exist or password is incorrect
+            return await render_template(
+                "login.html", last_updated=dir_last_updated("./src/static"), error_msg=error_msg
+            )
     return await render_template("login.html", last_updated=dir_last_updated("./src/static"))
+
+
+@server.route("/logout", methods=["POST"])
+async def logout():
+    session.clear()
+    return redirect("/")
+
+
+@server.route("/profile", methods=["GET"])
+async def profile():
+    return await render_template("profile.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.route("/help", methods=["GET"])
@@ -163,7 +226,10 @@ async def get_logs(md5_name):
 async def export_flashcard():
     filename = request.args.get("filename")
     md5_name = request.args.get("md5_name")
-    return await render_template("export-flashcard.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "export-flashcard.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static")
+    )
+
 
 # Get the export file of the associated <file> name.
 @server.route("/exports/<file>", methods=["GET"])

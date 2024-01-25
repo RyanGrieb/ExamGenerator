@@ -1,7 +1,19 @@
 {% extends 'base.html' %}
 {% block head %}
 {% endblock %} {% block body %}
-<div class="register-container">
-    Register: TBA
-</div>
+<script>
+</script>
+<form action="{{ url_for('register') }}" method="post">
+    <p>{{error_msg}}</p>
+    <p>Email:</p>
+    <input type="email" name="email" required />
+
+    <p>Password:</p>
+    <input type="password" name="password" required />
+
+    <p>Repeat password:</p>
+    <input type="password" name="confirm_password" required />
+
+    <button type="submit">Register</button>
+</form>
 {% endblock %}
