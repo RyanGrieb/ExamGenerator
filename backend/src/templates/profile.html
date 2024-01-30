@@ -3,9 +3,16 @@
 {% endblock %} {% block body %}
 <p>Your account: {{session.email}}</p>
 <div class="profile-container">
-    <form action="/logout" method="post">
-
+    {% if session.card_connected %}
+    <p>Account Type: Paid</p>
+    <button>Manage payments</button>
+    {% else %}
+    <p>Account Type: Free</p>
+    <a href="/add-payment">
         <button type="payment">Add payment</button>
+    </a>
+    {% endif %}
+    <form action="/logout" method="post">
         <button type="submit">Logout</button>
     </form>
 </div>

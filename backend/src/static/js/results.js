@@ -258,7 +258,8 @@ async function start_check_task_interval(task_id, completedCallback, errorCallba
 // Updates the HTML from the get request. Returns 'ok' if successful or 'error_type' if error occurs.
 async function get_converted_file(file_data, conversion_type) {
   console.log("Fetch generated file set from server:");
-
+  console.log(file_data);
+  
   const params = new URLSearchParams({
     filename: file_data.filename,
     md5_name: file_data.md5_name,

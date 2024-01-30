@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block head %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const stripe = Stripe('pk_test_51OcZRiJpxg5os3xYjNr042wj24T39xLVc8chc2ewhq7vBueKUb683wuWIhCdkAKQTvcfm9glsdsT1eWXZuchUXkg00fqCIo5Fy');
+
+    initialize();
+
+    // Fetch Checkout Session and retrieve the client secret
+    async function initialize() {
+        const response = await fetch("/create-checkout-session", {
+            method: "POST",
+        });
+
+        const { clientSecret } = await response.json();
+
+        const checkout = await stripe.initEmbeddedCheckout({
+            clientSecret,
+        });
+
+        // Mount Checkout
+        checkout.mount('#checkout');
+    }
+</script>
+{% endblock %} {% block body %}
+
+<h1>Add payment:</h1>
+
+
+
+<div id="checkout">
+    <!-- Checkout will insert the payment form here -->
+</div>
+
+{% endblock %}

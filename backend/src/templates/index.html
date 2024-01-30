@@ -22,12 +22,23 @@
                 multiple></input>
         </form>
 
-        <p>Max upload limit is 1Mb, <a href="/register">Sign up</a> for more</p>
+        {% if session.logged_in %}
+        {% if session.card_connected %}
+        <p class="center-text">Pricing: First 10 pages free, then 2¢ per page.</p>
+        {% else %}
+        <p>Free accounts can only upload 10 pages. <a href="/profile">Upgrade</a> for more.</p>
+        {% endif %}
+        {% else %}
+        <p>Guests can only upload 3 pages. <a href="/register">Register</a> for more</p>
+        {% endif %}
         <div class="convert-region center-inside-elems">
             <ul>
             </ul>
         </div>
     </div>
+</div>
+<div class="center-text">
+    <p class="error-text"></p>
 </div>
 <div class="convert-section center-horizontally center-inside-elems">
     <div class="convert-options">

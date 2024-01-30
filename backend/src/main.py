@@ -11,7 +11,10 @@ from .async_actions.async_task import *
 from quart import Quart, Request, render_template, flash, request, redirect, url_for, session, jsonify, send_file
 from quart_session import Session
 from werkzeug.utils import secure_filename
+from werkzeug.datastructures import FileStorage
 from .database import DBManager
+import stripe
+import pypdf
 
 UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
 OPENAI_API_KEY = "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"
@@ -70,6 +73,17 @@ def allowed_file(filename: str):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+# Returns account type (guest, free, paid)
+def get_acount_type() -> str:
+    if session.get("logged_in"):
+        if session.get("card_connected"):
+            return "paid"
+        else:
+            return "free"
+
+    return "guest"
+
+
 async def upload_file(request: Request):
     files_dict = await request.files
     print(files_dict, file=sys.stderr)
@@ -84,10 +98,21 @@ async def upload_file(request: Request):
     if len(files) != 1:
         return jsonify({"success": False})
 
-    file = files[0]
+    file: FileStorage = files[0]
 
     if not file or not allowed_file(file.filename):
         return jsonify({"success": False})
+
+
+    # FIXME: Account for 
+    pdf_reader = pypdf.PdfReader(file)
+    number_of_pages = len(pdf_reader.pages)
+    account_type = get_acount_type()
+
+    if number_of_pages > 3 and account_type == "guest":
+        return jsonify({"success": False, "error_type": "page_limit"})
+    if number_of_pages > 10 and account_type == "free":
+        return jsonify({"success": False, "error_type": "page_limit"})
 
     print(
         "User uploaded pdf: {}".format(file.filename),
@@ -165,7 +190,6 @@ async def register():
 @server.route("/login", methods=["GET", "POST"])
 async def login():
     if request.method == "POST":
-        print("Hi", file=sys.stderr)
         form_data = await request.form
         form_dict = dict(form_data)
         email = form_dict.get("email")
@@ -173,11 +197,13 @@ async def login():
 
         # Check if the email and password match a user in the database
         database = DBManager(pass_file="/run/secrets/db-password")
-        response, error_msg = database.check_user(email, password)
-        print(response, file=sys.stderr)
-        if response == 0:
+        db_user_obj, error_msg = database.get_user(email, password)
+        print(db_user_obj, file=sys.stderr)
+        if db_user_obj:
+            print(db_user_obj, file=sys.stderr)
             session["logged_in"] = True
             session["email"] = email
+            session["card_connected"] = db_user_obj.card_connected
             session.modified = True
             return redirect("/")
         else:
@@ -194,12 +220,88 @@ async def logout():
     return redirect("/")
 
 
-@server.route("/profile", methods=["GET"])
+@server.route(
+    "/profile",
+    methods=[
+        "GET",
+    ],
+)
 async def profile():
     if not session.get("logged_in"):
         return redirect(url_for("login"))
 
     return await render_template("profile.html", last_updated=dir_last_updated("./src/static"))
+
+
+@server.route("/checkout/return", methods=["GET"])
+async def handle_checkout_session():
+    # Reference: https://stripe.com/docs/payments/save-and-reuse?platform=web&ui=embedded-checkout#set-up-stripe
+    session_id = request.args.get("session_id")
+
+    print(session_id, file=sys.stderr)
+    # Retrieve checkout session
+    checkout_session = stripe.checkout.Session.retrieve(session_id)
+
+    # Retrieve the setup intent
+    setup_intent = stripe.SetupIntent.retrieve(checkout_session.setup_intent)
+
+    database = DBManager(pass_file="/run/secrets/db-password")
+
+    customer = None
+
+    # Create/fetch stripe customer
+    stripe_user_id = database.get_stripe_user_id(session.get("email"))
+    if not stripe_user_id:
+        customer = stripe.Customer.create(email=session.get("email"), description="From PDF2Flashcards backend")
+        database.add_stripe_customer(customer)
+        stripe_user_id = customer.id
+    # else:
+    #    print("!!!!!!!! RETRIEVE", file=sys.stderr)
+    #    customer = stripe.Customer.retrieve(stripe_user_id)
+
+    # FIXME: Ensure that stripe actually has a user_id here, our DB might get fucked.
+
+    # Attach payment method from the SetupIntent to the Stripe customer
+    stripe.PaymentMethod.attach(
+        setup_intent.payment_method,
+        customer=stripe_user_id,
+    )
+
+    # Update customer's default payment method
+    stripe.Customer.modify(
+        # setup_intent.customer,
+        id=stripe_user_id,
+        invoice_settings={
+            "default_payment_method": setup_intent.payment_method,
+        },
+    )
+
+    # Update users table & set card_connected to True
+    database.set_card_connected(session.get("email"), True)
+    session["card_connected"] = True
+
+    # Go back to user profile
+    return redirect(url_for("profile"))
+
+
+@server.route("/create-checkout-session", methods=["POST"])
+async def create_checkout_session():
+    base_url = request.url_root
+    return_url = base_url + "checkout/return?session_id={CHECKOUT_SESSION_ID}"
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="setup",
+        ui_mode="embedded",
+        return_url=return_url,
+    )
+
+    # Reference: https://stripe.com/docs/payments/save-and-reuse?platform=web&ui=embedded-checkout#set-up-stripe
+    return jsonify(clientSecret=session.client_secret)
+
+
+@server.route("/add-payment", methods=["GET"])
+async def add_payment():
+    return await render_template("add-payment.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.route("/help", methods=["GET"])
