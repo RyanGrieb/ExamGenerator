@@ -355,7 +355,7 @@ function set_file_status(md5_name, conversion_type, iconName) {
       strokeWidth: 14,
       easing: "easeInOut",
       duration: 4000,
-      color: "#aaa3f9",
+      color: "var(--gradient-4)",
       trailColor: "#eee",
       trailWidth: 1,
       svgStyle: { width: "100%", height: "100%" },

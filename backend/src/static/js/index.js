@@ -1,7 +1,66 @@
 class UploadedFile {
-  constructor(filename, md5_name) {
+  constructor(filename, md5_name, page_count) {
     this.filename = filename;
     this.md5_name = md5_name;
+    this.page_count = page_count;
+  }
+
+  // Save all uploaded_files[]
+  static save_all_to_cookie() {
+    for (const uploaded_file of uploaded_files) {
+      uploaded_file.save_to_cookie();
+    }
+  }
+
+  save_to_cookie() {
+    const conversion_type = document.querySelector('input[name="convert_type"]:checked').value;
+    const conversion_options = {};
+
+    if (conversion_type === "test") {
+      conversion_options["test"] = [];
+
+      const checkboxes = document.querySelectorAll('.convert-test-options input[type="checkbox"]:checked');
+      checkboxes.forEach((checkbox) => {
+        conversion_options["test"].push(checkbox.value);
+      });
+    }
+
+    let existing_cookie = false;
+    let files_cookie = Cookies.get("files");
+    const cookie_json = files_cookie ? JSON.parse(files_cookie) : undefined;
+
+    if (files_cookie) {
+      existing_cookie = cookie_json.some((file_json) => file_json["md5_name"] === this.md5_name);
+    }
+
+    console.log(`${conversion_type} - ${conversion_options}`);
+
+    // Create an object to store your data
+    const file_json = {
+      file_name: this.filename,
+      md5_name: this.md5_name,
+      conversion_types: [conversion_type],
+      conversion_options: conversion_options,
+    };
+
+    if (!existing_cookie) {
+      add_to_list_cookie("files", file_json);
+    } else {
+      // Append to existing cookies data
+      const index = cookie_json.findIndex((item) => item.md5_name === file_json.md5_name);
+      if (index !== -1) {
+        const conversion_types = cookie_json[index].conversion_types;
+        console.log(cookie_json);
+        if (!conversion_types.includes(conversion_type)) {
+          conversion_types.push(conversion_type);
+        }
+        cookie_json[index].conversion_options = {
+          ...cookie_json[index].conversion_options,
+          ...conversion_options,
+        };
+        Cookies.set("files", JSON.stringify(cookie_json));
+      }
+    }
   }
 }
 
@@ -39,6 +98,14 @@ function get_uploaded_file_count() {
 // Format our filename such that it's able to be put inside HTML tags.
 function get_formatted_file_name(fileName) {
   return fileName.replace(/[/\\?%*:|"<>]/g, "-").replaceAll(" ", "-");
+}
+
+function remove_file_extension(file_name) {
+  const dot_index = file_name.lastIndexOf(".");
+  if (dot_index === -1) {
+    return file_name; // No file extension found
+  }
+  return file_name.substring(0, dot_index);
 }
 
 function upload_file(file) {
@@ -108,7 +175,14 @@ function create_remove_file_button(formatted_file_name) {
 
 function remove_file(formatted_file_name) {
   const fileNameLi = document.getElementById(`upload-li-${formatted_file_name}`);
-  uploaded_files.filter((uploaded_file) => uploaded_file.filename != formatted_file_name);
+
+  // NOTE: We do this since backend doesn't return the file-extension in it's name
+  formatted_file_name = remove_file_extension(formatted_file_name);
+
+  uploaded_files = uploaded_files.filter(
+    (uploaded_file) => get_formatted_file_name(uploaded_file.filename) != formatted_file_name,
+  );
+  
   fileNameLi.remove();
   if (get_uploaded_file_count() <= 0) {
     show_convert_button(false);
@@ -212,20 +286,28 @@ function handle_upload_error(request, formatted_file_name) {
 
 function display_error_msg(message) {
   const error_text_elem = document.querySelector(".error-text");
+
+  if (message.length < 1) {
+    error_text_elem.innerHTML = "";
+    return;
+  }
+
   error_text_elem.innerHTML = `Error - ${message}`;
 }
 
 function handle_upload_success(request, file, formatted_file_name, progress_bar) {
-  const responseFileName = request.response["file_name"];
-  const responseMd5Name = request.response["md5_name"];
+  console.log(request.response);
+  const response_file_name = request.response["metadata"]["file_name"];
+  const response_md5_name = request.response["metadata"]["md5_name"];
+  const response_page_count = request.response["metadata"]["page_count"];
   const fileNameP = document.getElementById(`upload-li-${formatted_file_name}`).querySelector("p");
   const fileList = document.querySelector(".convert-region ul");
 
   fileNameP.innerHTML = `${file.name} - 100%`;
   progress_bar.animate(1);
 
-  if (!uploaded_files.some((file) => file.md5_name === responseMd5Name)) {
-    uploaded_files.push(new UploadedFile(responseFileName, responseMd5Name));
+  if (!uploaded_files.some((file) => file.md5_name === response_md5_name)) {
+    uploaded_files.push(new UploadedFile(response_file_name, response_md5_name, response_page_count));
   }
 
   // Make the convert button visible, once all files are loaded.
@@ -248,59 +330,49 @@ function upload_files() {
   }
 }
 
-function convert_files() {
-  const conversion_type = document.querySelector('input[name="convert_type"]:checked').value;
-  const conversion_options = {};
-
-  if (conversion_type === "test") {
-    conversion_options["test"] = [];
-
-    const checkboxes = document.querySelectorAll('.convert-test-options input[type="checkbox"]:checked');
-    checkboxes.forEach((checkbox) => {
-      conversion_options["test"].push(checkbox.value);
-    });
-  }
+async function convert_files() {
+  // Number of pages (-10 each document) the user is to be charged.
+  let paid_page_count = 0;
+  let page_count = 0;
 
   for (const uploaded_file of uploaded_files) {
-    let existing_cookie = false;
-    let files_cookie = Cookies.get("files");
-    const cookie_json = files_cookie ? JSON.parse(files_cookie) : undefined;
-
-    if (files_cookie) {
-      existing_cookie = cookie_json.some((file_json) => file_json["md5_name"] === uploaded_file.md5_name);
-    }
-
-    console.log(`${conversion_type} - ${conversion_options}`);
-
-    // Create an object to store your data
-    const file_json = {
-      file_name: uploaded_file.filename,
-      md5_name: uploaded_file.md5_name,
-      conversion_types: [conversion_type],
-      conversion_options: conversion_options,
-    };
-
-    if (!existing_cookie) {
-      add_to_list_cookie("files", file_json);
-    } else {
-      // Append to existing cookies data
-      const index = cookie_json.findIndex((item) => item.md5_name === file_json.md5_name);
-      if (index !== -1) {
-        const conversion_types = cookie_json[index].conversion_types;
-        console.log(cookie_json);
-        if (!conversion_types.includes(conversion_type)) {
-          conversion_types.push(conversion_type);
-        }
-        cookie_json[index].conversion_options = {
-          ...cookie_json[index].conversion_options,
-          ...conversion_options,
-        };
-        Cookies.set("files", JSON.stringify(cookie_json));
-      }
-    }
+    page_count += uploaded_file.page_count;
+    paid_page_count += uploaded_file.page_count - 10;
   }
 
-  window.location.href = "/results";
+  if (page_count > 0) {
+    console.log("Total pages " + page_count);
+    // Confirm with user the price of the conversion.
+    // Create a dialog box with html. It is called prompt.html from another folder
+    const response = await fetch("/prompt"); // Update with the correct endpoint
+
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+
+    const prompt_html = await response.text();
+    const prompt_container = document.createElement("div");
+
+    prompt_container.innerHTML = prompt_html;
+    document.body.appendChild(prompt_container);
+
+    const prompt_message = document.querySelector(".prompt-message");
+    prompt_message.innerHTML = `This conversion will use ${paid_page_count} pages, costing $${
+      paid_page_count * 0.02
+    }.`;
+
+    const prompt_confirm_btn = document.querySelector(".prompt-confirm-btn");
+    const prompt_cancel_btn = document.querySelector(".prompt-cancel-btn");
+
+    prompt_confirm_btn.onclick = () => {
+      UploadedFile.save_all_to_cookie();
+      window.location.href = "/results";
+    };
+
+    prompt_cancel_btn.onclick = () => {
+      document.body.removeChild(prompt_container);
+    };
+  }
 }
 
 window.addEventListener("load", () => {

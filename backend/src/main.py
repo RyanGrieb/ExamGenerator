@@ -99,6 +99,23 @@ def get_file_metadata(md5_name, key):
         return None
 
 
+# Returns the number of pages the user has processed
+def get_pages_processed():
+    database = DBManager(pass_file="/run/secrets/db-password")
+    db_user_obj, response = database.get_user(session.get("email"))
+
+    if not db_user_obj or response != "Success":
+        return -1
+
+    return db_user_obj.pages_processed
+
+
+# Returns the current monthly charges of the customer
+def get_customer_bill():
+    # FIXME: Dynamically check the price/page with Stripe API.
+    return get_pages_processed() * 0.02
+
+
 async def upload_file(request: Request):
     files_dict = await request.files
     print(files_dict, file=sys.stderr)
@@ -161,7 +178,7 @@ async def upload_file(request: Request):
     await file.save(os.path.join(server.config["UPLOAD_FOLDER"], file.filename))
 
     return (
-        jsonify({"success": True, "file_name": filename, "md5_name": md5_name}),
+        jsonify({"success": True, "metadata": metadata}),
         200,
         {"ContentType": "application/json"},
     )
@@ -221,10 +238,15 @@ async def login():
         email = form_dict.get("email")
         password = form_dict.get("password")
 
+        # VERY IMPORTANT FUNCTION, IF REMOVED ANYONE CAN LOG IN!!!
+        if not password or len(password) < 1:
+            return redirect("/")
+
         # Check if the email and password match a user in the database
         database = DBManager(pass_file="/run/secrets/db-password")
         db_user_obj, error_msg = database.get_user(email, password)
-        print(db_user_obj, file=sys.stderr)
+        # print(db_user_obj, file=sys.stderr)
+
         if db_user_obj:
             print(db_user_obj, file=sys.stderr)
             session["logged_in"] = True
@@ -256,7 +278,12 @@ async def profile():
     if not session.get("logged_in"):
         return redirect(url_for("login"))
 
-    return await render_template("profile.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "profile.html",
+        last_updated=dir_last_updated("./src/static"),
+        get_pages_processed=get_pages_processed,
+        get_customer_bill=get_customer_bill,
+    )
 
 
 @server.route("/checkout/return", methods=["GET"])
@@ -353,6 +380,11 @@ async def flashcard_test():
 @server.route("/flashcard", methods=["GET"])
 async def flashcard():
     return await render_template("flashcard.html", last_updated=dir_last_updated("./src/static"))
+
+
+@server.route("/prompt", methods=["GET"])
+async def prompt():
+    return await render_template("prompt.html", last_updated=dir_last_updated("./src/static"))
 
 
 # Get the Q&A set of the associated file.

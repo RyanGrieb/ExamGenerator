@@ -13,6 +13,7 @@ class DBUser:
         self.password = db_tuple[2]
         self.salt = bytes(db_tuple[3])
         self.card_connected = db_tuple[4]
+        self.pages_processed = int(db_tuple[6])
 
 
 class DBManager:
@@ -93,7 +94,7 @@ class DBManager:
             return (1, str(e))
         return (0, "Success")
 
-    def get_user(self, email: str, password: str):
+    def get_user(self, email: str, password: str | None = None):
         try:
             query = f"SELECT * FROM users WHERE email='{email}'"
             self.cursor.execute(query)
@@ -101,6 +102,10 @@ class DBManager:
 
             if user_db_tuple:
                 db_user_obj = DBUser(user_db_tuple)
+                
+                # If we are not providing a password
+                if not password:
+                    return (db_user_obj, "Success")
 
                 # Hash the entered password with the stored salt
                 hash_password_entered_hex = hashlib.pbkdf2_hmac(

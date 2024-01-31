@@ -1,19 +1,24 @@
 {% extends 'base.html' %}
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static',filename='css/register.css') }}?u={{ last_updated }}" />
 {% endblock %} {% block body %}
 <script>
 </script>
-<form action="{{ url_for('register') }}" method="post">
-    <p>{{error_msg}}</p>
-    <p>Email:</p>
-    <input type="email" name="email" required />
+<div class="register-container">
+    <div>
+        <form action="{{ url_for('register') }}" method="post">
+            <p>{{error_msg}}</p>
+            <p>Email:</p>
+            <input type="email" name="email" required />
 
-    <p>Password:</p>
-    <input type="password" name="password" required />
+            <p>Password:</p>
+            <input type="password" name="password" required />
 
-    <p>Repeat password:</p>
-    <input type="password" name="confirm_password" required />
+            <p>Repeat password:</p>
+            <input type="password" name="confirm_password" required />
 
-    <button type="submit">Register</button>
-</form>
+            <button type="submit">Register</button>
+        </form>
+    </div>
+</div>
 {% endblock %}
