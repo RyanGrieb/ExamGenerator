@@ -123,7 +123,7 @@ function create_progress_bar(formatted_file_name) {
     strokeWidth: 4,
     easing: "easeInOut",
     duration: 500,
-    color: "#aaa3f9",
+    color: "var(--gradient-4)",
     trailColor: "#eee",
     trailWidth: 1,
     svgStyle: { width: "100%", height: "100%" },

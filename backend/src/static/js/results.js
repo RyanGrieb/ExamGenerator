@@ -259,7 +259,7 @@ async function start_check_task_interval(task_id, completedCallback, errorCallba
 async function get_converted_file(file_data, conversion_type) {
   console.log("Fetch generated file set from server:");
   console.log(file_data);
-  
+
   const params = new URLSearchParams({
     filename: file_data.filename,
     md5_name: file_data.md5_name,
@@ -449,10 +449,10 @@ window.addEventListener("load", async () => {
         display_file_data(filename, md5_name, conversion_type);
 
         document.querySelectorAll(".results-files li").forEach((item) => {
-          item.style.backgroundColor = "white";
+          //item.style.backgroundColor = "var(--gradient-1)";
         });
 
-        list_item.style.backgroundColor = "#ccd1d9";
+        //list_item.style.backgroundColor = "var(--gradient-1)";
         document.querySelector(".results-options").style.display = "flex";
         document.querySelector(".results-select-prompt").style.display = "none";
         selected_document = { filename: filename, md5_name: md5_name, conversion_type: conversion_type };

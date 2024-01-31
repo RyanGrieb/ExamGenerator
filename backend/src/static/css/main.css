@@ -1,9 +1,20 @@
 :root {
-  --gradient-1: #1c2052;
-  --gradient-2: #410e6b;
-  --gradient-3: #502570;
-  --gradient-4: #9c39a1;
-  --gradient-5: #b55bba;
+  --gradient-1: #121212;
+  --gradient-2: #202020;
+  --gradient-3: #4b484e;
+  --gradient-4: #74607e;
+  --gradient-5: #e9e9e9;
+  --flashcard-background: var(--gradient-2);
+  --flashcard-color: var(--gradient-5);
+  --font-family: "Trebuchet MS", "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", sans-serif;
+}
+
+input[type="radio"] {
+  accent-color: var(--gradient-1);
+}
+
+input[type="checkbox"] {
+  accent-color: var(--gradient-1);
 }
 
 .gradient-1 {
@@ -28,9 +39,15 @@
 
 body {
   /*background-color:white;*/
-  background: radial-gradient(circle, var(--gradient-1), var(--gradient-3));
-  font-family: "Dejavu Sans", Arial, Verdana, sans-serif;
+  /*background: radial-gradient(circle at center in hsl shorter hue, var(--gradient-1), var(--gradient-2));*/
+  background: var(--gradient-1);
+  font-family: var(--font-family);
   color: white;
+  margin-top: 0;
+}
+
+label {
+  font-size: 19px;
 }
 
 li p {
@@ -39,10 +56,9 @@ li p {
 
 li a {
   text-decoration: none;
-  font-family: Georgia;
+  font-family: var(--font-family);
   font-size: 20px;
-  color: #000;
-  opacity: 85%;
+  color: var(--gradient-5);
 }
 
 li a:hover {
@@ -53,9 +69,11 @@ nav {
   display: flex;
   justify-content: space-between; /* To evenly distribute the items horizontally */
   /*background-color: rgba(3, 10, 223, 0.116);*/
-  background-color: #aaa3f9;
+  background-color: var(--gradient-3);
   padding: 10px;
-  border-radius: 5px;
+  margin-top: 0;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
 }
 
 nav ul {
@@ -66,15 +84,15 @@ nav ul {
 }
 
 nav li {
-  margin-right: 20px;
-  font-family: Georgia;
+  margin-right: 30px;
+  font-family: var(--font-family);
   font-weight: bold;
-  font-size: 20px;
 }
 
 nav a {
   text-decoration: none;
   color: white;
+  font-size: 25px;
 }
 
 /* Add hover effect for links */
@@ -91,7 +109,7 @@ h2 {
 }
 
 p {
-  font-family: Georgia;
+  font-family: var(--font-family);
   font-size: 130%;
 }
 
@@ -102,7 +120,7 @@ p {
 #toc-container {
   margin: auto;
   margin-top: 30px;
-  background: #b3bbf394 none repeat scroll 0 0;
+  background: var(--gradient-3) none repeat scroll 0 0;
   border: 1px solid #aaa;
   display: table;
   font-size: 95%;
@@ -129,18 +147,18 @@ p {
 }
 
 #help-faq {
-  font-family: Georgia;
+  font-family: var(--font-family);
   text-align: center;
 }
 
 #help-discord {
-  font-family: Georgia;
+  font-family: var(--font-family);
   text-align: center;
 }
 
 .center-text {
   text-align: center;
-  font-family: Georgia;
+  font-family: var(--font-family);
 }
 
 .center-horizontally {
@@ -163,11 +181,16 @@ p {
 
 .upload-area {
   padding: 4px;
-  background-color: #cdccff;
+  background-color: var(--gradient-3);
   max-width: 650px; /* Set your desired width */
   min-width: 380px;
   min-height: 250px;
-  border: 8px dashed #aaa3f9; /* Optional: Add a dashed border for visual style */
+  border: 8px dashed var(--gradient-4); /* Optional: Add a dashed border for visual style */
+  border-radius: 8px;
+}
+
+.upload-area a {
+  color: var(--gradient-5);
 }
 
 #converting-files-list {
@@ -221,13 +244,17 @@ input[type="submit"] {
   will-change: box-shadow, transform;
   font-size: 24px;
   width: 150px;
-  font-family: Georgia;
+  font-family: var(--font-family);
+}
+
+.button-1 * {
+  padding: 5px;
 }
 
 .button-1 {
   align-items: center;
   appearance: none;
-  background-image: radial-gradient(100% 100% at 100% 0, #aaa3f9 0, #7270b6 100%);
+  background-image: radial-gradient(100% 100% at 100% 0, var(--gradient-4) 0, var(--gradient-4) 100%);
   border: 0;
   border-radius: 6px;
   box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px,
@@ -236,7 +263,6 @@ input[type="submit"] {
   color: #fff;
   cursor: pointer;
   display: inline-flex;
-  /*font-family: "JetBrains Mono",monospace;*/
   height: 48px;
   justify-content: center;
   line-height: 1;
@@ -253,23 +279,23 @@ input[type="submit"] {
   touch-action: manipulation;
   white-space: nowrap;
   will-change: box-shadow, transform;
-  font-family: Georgia;
-  font-size: 24px;
-  width: 165px;
+  font-family: var(--font-family);
+  font-size: 27px;
+  width: 195px;
 }
 
 .button-1:focus {
-  box-shadow: #7270b6 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px,
-    #484775 0 -3px 0 inset;
+  box-shadow: var(--gradient-5) 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px,
+    rgba(45, 35, 66, 0.3) 0 7px 13px -3px, var(--gradient-5) 0 -3px 0 inset;
 }
 
 .button-1:hover {
-  box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #484775 0 -3px 0 inset;
+  box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, var(--gradient-5) 0 -3px 0 inset;
   transform: translateY(-2px);
 }
 
 .button-1:active {
-  box-shadow: #484775 0 3px 7px inset;
+  box-shadow: var(--gradient-4) 0 3px 7px inset;
   transform: translateY(2px);
 }
 
@@ -355,7 +381,7 @@ input[type="submit"] {
 .flashcard {
   display: flex;
   flex-direction: column;
-  background-color: white;
+  background-color: var(--flashcard-background);
   width: 500px;
   height: 300px;
   margin: 4px;
@@ -375,7 +401,7 @@ input[type="submit"] {
   margin: 4px;
   width: 42px;
   height: 42px;
-  background-color: #dbd8d8;
+  background-color: var(--gradient-3);
   flex-shrink: 0;
   border-radius: 10px;
   cursor: pointer;
@@ -397,7 +423,7 @@ input[type="submit"] {
   width: 42px;
   height: 42px;
 
-  background-color: #dbd8d8;
+  background-color: var(--gradient-3);
 
   position: absolute;
   top: 0;
@@ -435,7 +461,7 @@ input[type="submit"] {
 }
 
 .arrow {
-  border: solid black;
+  border: solid white;
   border-width: 0 6px 6px 0;
   display: inline-block;
   padding: 6px;
@@ -459,12 +485,14 @@ input[type="submit"] {
 }
 
 .results-files {
-  border: 6px ridge #aaa3f9;
+  background-color: var(--gradient-2);
+  border: 6px ridge var(--gradient-4);
   flex-grow: 0; /* do not grow   - initial value: 0 */
   flex-shrink: 0; /* do not shrink - initial value: 1 */
   flex-basis: 20em; /* width/height  - initial value: auto */
   padding: 4px;
   align-self: baseline;
+  border-radius: 8px;
 }
 
 .results-files ul {
@@ -473,11 +501,11 @@ input[type="submit"] {
 }
 
 .results-files li:last-child {
-  border-bottom: 1px solid black;
+  border-bottom: 1px solid white;
 }
 
 .results-files li:hover {
-  background-color: #a6d8b2;
+  background-color: var(--gradient-2);
 }
 
 .results-files .loader {
@@ -513,7 +541,8 @@ input[type="submit"] {
   border-right: 1px solid black;
   padding-left: 4px;
   padding-right: 4px;
-  background-color: white;
+  background-color: var(--gradient-3);
+  border-radius: 3px;
 }
 
 .results-output {
@@ -529,9 +558,10 @@ input[type="submit"] {
 .results-output .output-text {
   margin: 0;
   margin-top: 5px;
-  background-color: #cdccff;
+  background-color: var(--gradient-3);
   padding: 4px;
-  border: 6px ridge #aaa3f9;
+  border: 6px ridge var(--gradient-4);
+  border-radius: 8px;
 }
 
 .results-files-header {
@@ -572,7 +602,7 @@ input[type="submit"] {
   width: 42px;
   height: 32px;
   border-radius: 8px;
-  background-color: #7270b6;
+  background-color: var(--gradient-4);
   border: none;
   color: white;
 }
@@ -592,8 +622,9 @@ input[type="submit"] {
   min-width: 310px;
   margin-top: 10px;
   padding: 4px;
-  border: 6px double #aaa3f9;
-  background-color: #cdccff;
+  border: 6px double var(--gradient-4);
+  background-color: var(--gradient-3);
+  border-radius: 8px;
 }
 
 .convert-options {
@@ -605,11 +636,16 @@ input[type="submit"] {
 }
 
 .results-options {
-  border: 6px double #aaa3f9;
-  background-color: #cdccff;
+  border: 6px double var(--gradient-4);
+  background-color: var(--gradient-3);
   margin: 4px;
   display: flex;
   justify-content: center;
+  border-radius: 8px;
+}
+
+.export-data-list {
+  background-color: var(--gradient-3);
 }
 
 .results-options button {
