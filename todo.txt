@@ -1,6 +1,6 @@
 * ASAP *
-- Limit guest & free users to 3, 10 pages respectively. 
-- Display cost of uploaded files for paid accounts before the convert them.
+- Display usage to user in the profile page.
+- Display cost of uploaded files for paid accounts before converting
 - Payment processing
 - Confirm email prompt
 - Save uploaded files w/ user account in DB.
@@ -9,7 +9,7 @@
     * For example, we might have a document with a lot of Foo: Bar, Word: Definition text. We change the prompt to improve output.
     * Another example is if there are existing test questions/answers and we are generating a test/quiz from pdf. Change the prompt...
     * 
-
+- Google ads.
 
 
 * ??? - Need to reproduce *

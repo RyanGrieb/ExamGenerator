@@ -22,6 +22,7 @@ UPLOAD_FOLDER = "./data/file-upload"
 JSON_FOLDER = "./data/file-json"
 PROCESSED_FOLDER = "./data/file-processed"
 LOG_FOLDER = "./data/file-log"
+METADATA_FOLDER = "./data/file-metadata"
 EXPORT_FOLDER = "./data/exports"
 ALLOWED_EXTENSIONS = {"pdf"}
 CONCURRENT_TEXT_PROCESS_LIMIT = 2  # How many files unstructured API can handle at a time.
@@ -35,6 +36,7 @@ server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
 server.config["LOG_FOLDER"] = LOG_FOLDER
 server.config["EXPORT_FOLDER"] = EXPORT_FOLDER
+server.config["METADATA_FOLDER"] = METADATA_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
 server.config["CONCURRENT_TEXT_PROCESS_LIMIT"] = CONCURRENT_TEXT_PROCESS_LIMIT
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
@@ -84,6 +86,19 @@ def get_acount_type() -> str:
     return "guest"
 
 
+def get_file_metadata(md5_name, key):
+    metadata_folder = server.config["METADATA_FOLDER"]
+
+    metadata_file_path = os.path.join(metadata_folder, f"{md5_name}.json")
+
+    if os.path.exists(metadata_file_path):
+        with open(metadata_file_path, "r") as metadata_file:
+            metadata = json.load(metadata_file)
+            return metadata.get(key, None)
+    else:
+        return None
+
+
 async def upload_file(request: Request):
     files_dict = await request.files
     print(files_dict, file=sys.stderr)
@@ -103,8 +118,7 @@ async def upload_file(request: Request):
     if not file or not allowed_file(file.filename):
         return jsonify({"success": False})
 
-
-    # FIXME: Account for 
+    # TODO: Write page numbers to the metadata file
     pdf_reader = pypdf.PdfReader(file)
     number_of_pages = len(pdf_reader.pages)
     account_type = get_acount_type()
@@ -118,9 +132,13 @@ async def upload_file(request: Request):
         "User uploaded pdf: {}".format(file.filename),
         file=sys.stderr,
     )
-    # Create /pdf-uploads directory if it doesn't exist.
+    # Create /file-upload directory if it doesn't exist.
     if not os.path.exists(server.config["UPLOAD_FOLDER"]):
         os.makedirs(server.config["UPLOAD_FOLDER"])
+
+    # Create /file-metadata directory if it doesn't exist.
+    if not os.path.exists(server.config["METADATA_FOLDER"]):
+        os.makedirs(server.config["METADATA_FOLDER"])
 
     file_contents = file.stream.read()
     # Compute the MD5 hash of the contents
@@ -128,6 +146,14 @@ async def upload_file(request: Request):
     filename = secure_filename(file.filename).replace(".pdf", "")
 
     file.filename = f"{md5_name}.pdf"
+
+    # Save the file's metadata to the filesystem
+    # TODO: Save IP of user who uploaded.
+    metadata = {"file_name": filename, "md5_name": md5_name, "page_count": number_of_pages}
+
+    metadata_file_path = os.path.join(server.config["METADATA_FOLDER"], f"{md5_name}.json")
+    with open(metadata_file_path, "w") as metadata_file:
+        json.dump(metadata, metadata_file)
 
     # Release the pointer that reads the file so we can save it properly
     file.stream.seek(0)
@@ -275,6 +301,16 @@ async def handle_checkout_session():
             "default_payment_method": setup_intent.payment_method,
         },
     )
+
+    subscription = stripe.Subscription.create(customer=stripe_user_id, items=[{"price": stripe_keys["product_id"]}])
+    print(subscription, file=sys.stderr)
+    print("===========", file=sys.stderr)
+    # Assuming subscription is a Stripe Subscription object
+    subscription_item_id = subscription["items"]["data"][0]["id"]
+    print(subscription_item_id, file=sys.stderr)
+
+    # Store subscription_item.id to record usage later.
+    database.assign_user_subscription_item(stripe_user_id, subscription_item_id)
 
     # Update users table & set card_connected to True
     database.set_card_connected(session.get("email"), True)
@@ -485,6 +521,13 @@ async def post_convert_file():
             case _:
                 set_task_status("error")
                 return "Error processing the request"
+
+        # Update the pages_processed for the user, if they exist
+        page_count: int = get_file_metadata(md5_name, "page_count")
+        if page_count > 10 and convert_type != "text" and session.get("logged_in"):
+            pages_processed = page_count - 10  # Numbers of pages we are to charge the user (first 10 are free)
+            database = DBManager(pass_file="/run/secrets/db-password")
+            database.add_pages_processed(session.get("email"), pages_processed)
 
         # Return the task ID to the client
         return jsonify({"task_id": task_id})

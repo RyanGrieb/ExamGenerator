@@ -3,6 +3,7 @@ import sys
 import os
 import hashlib
 import stripe
+import time
 
 
 class DBUser:
@@ -26,6 +27,45 @@ class DBManager:
         )
         password_file.close()
         self.cursor = self.connection.cursor(buffered=True)
+
+    # FIXME: This simple function can be replaced with a function called execute_query(...).
+    # Only create functions for complex queries
+    def assign_user_subscription_item(self, user_id, item_id):
+        query = "UPDATE stripe_users SET subscription_item_id = %s WHERE user_id = %s"
+        values = (item_id, user_id)
+        self.cursor.execute(query, values)
+        self.connection.commit()
+
+    def add_pages_processed(self, email: str, amount: int):
+        query = f"UPDATE users SET pages_processed = pages_processed + {amount} WHERE email='{email}'"
+        self.cursor.execute(query)
+        self.connection.commit()
+
+        # Get user_id from email: SELECT stripe_user_id from users WHERE email='{email}'
+        subscription_query = f"""
+        SELECT subscription_item_id
+        FROM stripe_users
+        WHERE user_id = (
+            SELECT stripe_user_id
+            FROM users
+            WHERE email = '{email}'
+        )
+        """
+        self.cursor.execute(subscription_query)
+        subscription_item_id: str = self.cursor.fetchone()[0]
+
+        stripe.SubscriptionItem.create_usage_record(
+            subscription_item_id,
+            quantity=amount,
+            timestamp=int(time.time()),
+            action="increment",
+        )
+
+    def get_pages_processed(self, email) -> int:
+        query = "SELECT pages_processed FROM users WHERE email = %s"
+        self.cursor.execute(query, (email,))
+        pages_processed: int = self.cursor.fetchone()[0]
+        return pages_processed
 
     def add_user(self, email: str, password: str):
         try:
@@ -126,6 +166,10 @@ class DBManager:
         self.cursor.execute(users_query)
 
         self.connection.commit()
+
+    def close_connections(self):
+        self.cursor.close()
+        self.connection.close()
 
 
 """

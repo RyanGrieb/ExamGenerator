@@ -1,8 +1,36 @@
+:root {
+  --gradient-1: #1c2052;
+  --gradient-2: #410e6b;
+  --gradient-3: #502570;
+  --gradient-4: #9c39a1;
+  --gradient-5: #b55bba;
+}
+
+.gradient-1 {
+  background-color: var(--gradient-1);
+}
+
+.gradient-2 {
+  background-color: var(--gradient-2);
+}
+
+.gradient-3 {
+  background-color: var(--gradient-3);
+}
+
+.gradient-4 {
+  background-color: var(--gradient-4);
+}
+
+.gradient-5 {
+  background-color: var(--gradient-5);
+}
+
 body {
   /*background-color:white;*/
-  background: radial-gradient(circle, #ffffff, #e5e4ff);
+  background: radial-gradient(circle, var(--gradient-1), var(--gradient-3));
   font-family: "Dejavu Sans", Arial, Verdana, sans-serif;
-  color: rgb(61, 61, 61);
+  color: white;
 }
 
 li p {
