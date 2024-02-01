@@ -29,11 +29,14 @@ class DBManager:
         password_file.close()
         self.cursor = self.connection.cursor(buffered=True)
 
-    # FIXME: This simple function can be replaced with a function called execute_query(...).
-    # Only create functions for complex queries
-    def assign_user_subscription_item(self, user_id, item_id):
-        query = "UPDATE stripe_users SET subscription_item_id = %s WHERE user_id = %s"
-        values = (item_id, user_id)
+    def run_query(self, query: str):
+        self.cursor.execute(query)
+        self.connection.commit()
+        return self.cursor.fetchone()
+
+    def assign_user_subscriptions(self, user_id: str, subscription_id: str, subscription_item_id: str):
+        query = "UPDATE stripe_users SET subscription_id = %s, subscription_item_id = %s WHERE user_id = %s"
+        values = (subscription_id, subscription_item_id, user_id)
         self.cursor.execute(query, values)
         self.connection.commit()
 
@@ -44,7 +47,7 @@ class DBManager:
 
         # Get user_id from email: SELECT stripe_user_id from users WHERE email='{email}'
         subscription_query = f"""
-        SELECT subscription_item_id
+        SELECT subscription_item_id, subscription_id
         FROM stripe_users
         WHERE user_id = (
             SELECT stripe_user_id
@@ -102,7 +105,7 @@ class DBManager:
 
             if user_db_tuple:
                 db_user_obj = DBUser(user_db_tuple)
-                
+
                 # If we are not providing a password
                 if not password:
                     return (db_user_obj, "Success")

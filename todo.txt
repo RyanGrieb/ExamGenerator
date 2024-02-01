@@ -1,14 +1,10 @@
 * ASAP *
-- Display cost of uploaded files for paid accounts before converting
-- Payment processing
 - Confirm email prompt
 - Save uploaded files w/ user account in DB.
-- Determine how much OpenAI API costs
 - Before processing document with ai, determine the document style on the first page and apply unique prompts per each style.
     * For example, we might have a document with a lot of Foo: Bar, Word: Definition text. We change the prompt to improve output.
     * Another example is if there are existing test questions/answers and we are generating a test/quiz from pdf. Change the prompt...
     * 
-- When removing files from upload area, remove them from our cookies if added.
 - Google ads.
 
 *** Improve output via. re-processing ***
@@ -49,3 +45,8 @@
 17. Create work email? @pdf2flashcards.com
 18. Shift payments to @pdf2flashcards.com
 19. Automate income/expenses from email onto google sheets: https://docs.google.com/spreadsheets/d/1vxsje0roJ4g_YpmBPFZC467zoVXOtJUPI0PY7keWLB0/edit#gid=0
+
+
+
+* Not as important things to do *
+- Handle stripe user deleted while card is connected.

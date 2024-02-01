@@ -17,6 +17,11 @@ input[type="checkbox"] {
   accent-color: var(--gradient-1);
 }
 
+#checkout {
+  /* Set background color to dark */
+  background-color: var(--gradient-1) !important;
+}
+
 .gradient-1 {
   background-color: var(--gradient-1);
 }
@@ -533,11 +538,17 @@ input[type="submit"] {
   padding: 0;
   margin-top: 14px;
   margin-bottom: 14px;
+  display: inline-block;
+  width: 280px;
+  white-space: nowrap;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
 }
 
 .results-files li {
   display: flex;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
   border-top: 1px solid black;
   border-left: 1px solid black;

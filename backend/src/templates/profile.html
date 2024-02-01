@@ -7,7 +7,8 @@
         <p>Your account: {{session.email}}</p>
         {% if session.card_connected %}
         <p>Account Type: Paid</p>
-        <p>Current Monthly Usage: {{get_pages_processed()}} pages / ${{get_customer_bill()}}</p>
+        <p>Monthly Usage: {{amount // 2}} pages / ${{amount / 100}}</p>
+        <p>Billing due: {{charge_date}}</p>
         <div class="profile-buttons">
             <button class="button-1" style="width: 275px;">Manage payments</button>
             {% else %}

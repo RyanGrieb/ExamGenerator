@@ -182,7 +182,7 @@ function remove_file(formatted_file_name) {
   uploaded_files = uploaded_files.filter(
     (uploaded_file) => get_formatted_file_name(uploaded_file.filename) != formatted_file_name,
   );
-  
+
   fileNameLi.remove();
   if (get_uploaded_file_count() <= 0) {
     show_convert_button(false);
@@ -357,9 +357,7 @@ async function convert_files() {
     document.body.appendChild(prompt_container);
 
     const prompt_message = document.querySelector(".prompt-message");
-    prompt_message.innerHTML = `This conversion will use ${paid_page_count} pages, costing $${
-      paid_page_count * 0.02
-    }.`;
+    prompt_message.innerHTML = `This conversion will use ${paid_page_count} pages, costing $${paid_page_count * 0.02}`;
 
     const prompt_confirm_btn = document.querySelector(".prompt-confirm-btn");
     const prompt_cancel_btn = document.querySelector(".prompt-cancel-btn");

@@ -15,6 +15,8 @@ from werkzeug.datastructures import FileStorage
 from .database import DBManager
 import stripe
 import pypdf
+import traceback
+from datetime import datetime
 
 UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
 OPENAI_API_KEY = "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"
@@ -99,26 +101,43 @@ def get_file_metadata(md5_name, key):
         return None
 
 
-# Returns the number of pages the user has processed
-def get_pages_processed():
+# Returns the invoice amount and due date.
+def get_customer_invoice():
+    print(f"{session.get('card_connected')} !!!!!!!!!!!!!!!", file=sys.stderr)
+    if not session.get("card_connected"):
+        return (None, None)
+
     database = DBManager(pass_file="/run/secrets/db-password")
-    db_user_obj, response = database.get_user(session.get("email"))
+    customer_id = database.get_stripe_user_id(session.get("email"))
 
-    if not db_user_obj or response != "Success":
-        return -1
+    response = database.run_query(f"SELECT subscription_item_id FROM stripe_users WHERE user_id = '{customer_id}'")
+    subscription_item_id = response[0]
 
-    return db_user_obj.pages_processed
+    response = database.run_query(f"SELECT subscription_id FROM stripe_users WHERE user_id = '{customer_id}'")
+    subscription_id = response[0]
 
+    if not subscription_id:
+        return (None, None)
 
-# Returns the current monthly charges of the customer
-def get_customer_bill():
-    # FIXME: Dynamically check the price/page with Stripe API.
-    return get_pages_processed() * 0.02
+    subscription = stripe.Subscription.retrieve(subscription_id)
+
+    # Retrieve upcoming invoice
+    upcoming_invoice = stripe.Invoice.upcoming(subscription=subscription_id)
+
+    # Calculate the next charge date based on the current period end date
+    current_period_end = subscription.current_period_end
+    next_charge_date = datetime.fromtimestamp(current_period_end)
+
+    # Format the next charge date
+    next_charge_date_str = next_charge_date.strftime("%m/%d/%Y")
+
+    print(upcoming_invoice, file=sys.stderr)
+    return (next_charge_date_str, upcoming_invoice.amount_due)
 
 
 async def upload_file(request: Request):
     files_dict = await request.files
-    print(files_dict, file=sys.stderr)
+    # print(files_dict, file=sys.stderr)
 
     if "file" not in files_dict:
         flash("No file part")
@@ -278,11 +297,13 @@ async def profile():
     if not session.get("logged_in"):
         return redirect(url_for("login"))
 
+    charge_date, amount = get_customer_invoice()
+
     return await render_template(
         "profile.html",
         last_updated=dir_last_updated("./src/static"),
-        get_pages_processed=get_pages_processed,
-        get_customer_bill=get_customer_bill,
+        charge_date=charge_date,
+        amount=amount,
     )
 
 
@@ -291,7 +312,7 @@ async def handle_checkout_session():
     # Reference: https://stripe.com/docs/payments/save-and-reuse?platform=web&ui=embedded-checkout#set-up-stripe
     session_id = request.args.get("session_id")
 
-    print(session_id, file=sys.stderr)
+    # print(session_id, file=sys.stderr)
     # Retrieve checkout session
     checkout_session = stripe.checkout.Session.retrieve(session_id)
 
@@ -330,14 +351,14 @@ async def handle_checkout_session():
     )
 
     subscription = stripe.Subscription.create(customer=stripe_user_id, items=[{"price": stripe_keys["product_id"]}])
-    print(subscription, file=sys.stderr)
-    print("===========", file=sys.stderr)
+    # print(subscription, file=sys.stderr)
+    # print("===========", file=sys.stderr)
     # Assuming subscription is a Stripe Subscription object
     subscription_item_id = subscription["items"]["data"][0]["id"]
-    print(subscription_item_id, file=sys.stderr)
+    # print(subscription_item_id, file=sys.stderr)
 
-    # Store subscription_item.id to record usage later.
-    database.assign_user_subscription_item(stripe_user_id, subscription_item_id)
+    # Assign the subscription_id and subscription_item_id to our stripe_users table
+    database.assign_user_subscriptions(stripe_user_id, subscription.id, subscription_item_id)
 
     # Update users table & set card_connected to True
     database.set_card_connected(session.get("email"), True)
@@ -552,7 +573,7 @@ async def post_convert_file():
                 )
             case _:
                 set_task_status("error")
-                return "Error processing the request"
+                return {"error:": "No convert_type found."}
 
         # Update the pages_processed for the user, if they exist
         page_count: int = get_file_metadata(md5_name, "page_count")
@@ -565,8 +586,9 @@ async def post_convert_file():
         return jsonify({"task_id": task_id})
 
     except Exception as e:
-        print("Error:", str(e), file=sys.stderr)
-        return "Error processing the request"
+        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        print(error_message, file=sys.stderr)
+        return {"error:": error_message}
 
 
 @server.route("/results", methods=["GET"])

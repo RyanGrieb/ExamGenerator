@@ -304,9 +304,11 @@ async function post_convert_file(file_data, conversion_type, conversion_options,
       method: "POST",
       body: formData,
     });
+    console.log(response);
 
     if (response.ok) {
       const responseData = await response.json();
+      console.log(responseData);
       const task_id = responseData.task_id;
 
       start_check_task_interval(

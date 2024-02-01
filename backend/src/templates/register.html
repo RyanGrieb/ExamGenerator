@@ -5,9 +5,9 @@
 <script>
 </script>
 <div class="register-container">
-    <div>
+    <div class="register-box">
         <form action="{{ url_for('register') }}" method="post">
-            <p>{{error_msg}}</p>
+            <p class="error-text">{{error_msg}}</p>
             <p>Email:</p>
             <input type="email" name="email" required />
 
@@ -17,7 +17,9 @@
             <p>Repeat password:</p>
             <input type="password" name="confirm_password" required />
 
-            <button type="submit">Register</button>
+            <div>
+                <button type="submit" class="button-1">Register</button>
+            </div>
         </form>
     </div>
 </div>

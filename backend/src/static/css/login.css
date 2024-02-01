@@ -5,7 +5,7 @@ html {
   overflow: hidden; /* Hide scrollbars */
 }
 
-.register-container {
+.login-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -13,7 +13,7 @@ html {
   height: 100%; /* Full height */
 }
 
-.register-box {
+.login-box {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -25,22 +25,22 @@ html {
   height: 350px;
 }
 
-.register-box div {
+.login-box div {
   display: flex;
   justify-content: center;
 }
 
-.register-box button {
+.login-box button {
   margin-top: 20px;
 }
 
-.register-box p {
+.login-box p {
   padding: 0;
   margin: 0;
   margin-top: 6px;
 }
 
-.register-box input {
+.login-box input {
   color: white;
   background-color: var(--gradient-1);
   width: 250px;
