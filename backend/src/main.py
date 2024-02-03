@@ -578,7 +578,7 @@ async def post_convert_file():
         print(f"*** Converting {filename} to {convert_type} ***", file=sys.stderr)
 
         # FIXME: Get extension_type from md5 metadata
-        extension_type = get_file_extension(filename)
+        extension_type: str = get_file_metadata(md5_name, "extension_type")
 
         match convert_type:
             case "text":

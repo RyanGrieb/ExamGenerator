@@ -1,4 +1,5 @@
 * ASAP *
+- Don't have convert button appear if other files are still uploading
 - Google adsense
 - Google ad compaign: Hire some dude off fiverr and make the following images
     image: Minimum size: 600 x 314 pixels. Recommended size: 1200 x 628 pixels. Max size: 4096 x 4096 pixels.

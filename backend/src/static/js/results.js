@@ -237,7 +237,13 @@ async function post_convert_file(file_data, conversion_type, conversion_options,
 }
 
 function set_file_progress(md5_name, conversion_type, value) {
-  progress_bars[`${md5_name}-${conversion_type}`].animate(value);
+  const key = `${md5_name}-${conversion_type}`;
+  if (progress_bars.hasOwnProperty(key)) {
+    progress_bars[key].animate(value);
+  } else {
+    //FIXME: This should never happen but it does?
+    console.warn(`Progress bar with key ${key} not found.`);
+  }
 }
 
 function set_file_status(md5_name, conversion_type, iconName) {

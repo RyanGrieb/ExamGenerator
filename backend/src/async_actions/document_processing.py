@@ -15,6 +15,7 @@ from filelock import FileLock
 GPT_MODEL = "gpt-3.5-turbo-1106"
 running_unstructured_processes = 0
 
+
 async def async_document2json(
     server: Quart,
     filename: str,
@@ -40,7 +41,7 @@ async def async_document2json(
 
         # Check if the pptx file exists, if not return and set the task status to 'error':
         if not os.path.isfile(document_file_path):
-            logger.debug(f"Error: file does not exist: {filename}")
+            logger.debug(f"Error: file does not exist: {document_file_path}")
             set_task_status(task_id, "error")
             set_task_attribute(
                 task_id, "error_msg", "Error: Unable to find uploaded file. Try uploading the file again."
@@ -611,8 +612,6 @@ async def gpt_generate_qa(server, md5_name, data):
 
     # Return a list with a nested list of two elements (Q/A)
     return qa_sets
-
-
 
 
 async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: str, conversion_options: dict):
