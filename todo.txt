@@ -1,18 +1,12 @@
 * ASAP *
-- Confirm email prompt
-- Save uploaded files w/ user account in DB.
-- Before processing document with ai, determine the document style on the first page and apply unique prompts per each style.
-    * For example, we might have a document with a lot of Foo: Bar, Word: Definition text. We change the prompt to improve output.
-    * Another example is if there are existing test questions/answers and we are generating a test/quiz from pdf. Change the prompt...
-    * 
-- Google ads.
+- Google adsense
+- Google ad compaign: Hire some dude off fiverr and make the following images
+    image: Minimum size: 600 x 314 pixels. Recommended size: 1200 x 628 pixels. Max size: 4096 x 4096 pixels.
+    logo: Minimum size: 128 x 128 pixels. Recommended size: 1200 x 1200 pixels. Max size: 4096 x 4096 pixels.
 
 *** Improve output via. re-processing ***
-- Handle edgecases where answer is just dots (e.g. What is drought? | ...) 
     Have GPT re-process these
 - Handle edgecases where question or answer output is about XXX characters
-- Make ch1-ppt output better (e.g. What are the key security concepts? | - Confidentiality) Is just one value.
-    Have GPT understand the dashes better.
 
 
 * ??? - Need to reproduce *
@@ -25,13 +19,10 @@
 3. Implement export to cheatsheet feature (For keyword: definition feature)
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
 5. Support PPTX files.
-6. Add user accounts (google integration, ect.)
 7. Saved documents for user accounts, regardless of cookies.
 
 * JANUARY * (Premium accounts, Look & Feel, SEO)
-9. Limit document generation for users w/o account, along with "free" users.
 10. Add "premium features" (Export options, filetypes, filesize, unlimited conversions)
-11. Hire some dude on fiverr for CSS look & feel after implementing these features.
 12. Fix SEO for google.
 13. Fix CSS to support mobile devices.
 14. Write up report on potential costs of API vs. hardware.
@@ -50,3 +41,9 @@
 
 * Not as important things to do *
 - Handle stripe user deleted while card is connected.
+- Confirm email prompt
+- Save uploaded files w/ user account in DB.
+- Before processing document with ai, determine the document style on the first page and apply unique prompts per each style.
+    * For example, we might have a document with a lot of Foo: Bar, Word: Definition text. We change the prompt to improve output.
+    * Another example is if there are existing test questions/answers and we are generating a test/quiz from pdf. Change the prompt...
+    * 

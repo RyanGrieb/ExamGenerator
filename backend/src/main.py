@@ -6,15 +6,27 @@ import uuid
 import json
 import stripe
 from .async_actions import exporter
-from .async_actions import pdf_processing
+from .async_actions import document_processing, pdf_processing, pptx_processing
 from .async_actions.async_task import *
-from quart import Quart, Request, render_template, flash, request, redirect, url_for, session, jsonify, send_file, abort
+from quart import (
+    Quart,
+    Request,
+    render_template,
+    flash,
+    request,
+    redirect,
+    url_for,
+    session,
+    jsonify,
+    send_file,
+    abort,
+)
 from quart_session import Session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 from .database import DBManager
 import stripe
-import pypdf
+
 import traceback
 from datetime import datetime
 
@@ -26,7 +38,7 @@ PROCESSED_FOLDER = "./data/file-processed"
 LOG_FOLDER = "./data/file-log"
 METADATA_FOLDER = "./data/file-metadata"
 EXPORT_FOLDER = "./data/exports"
-ALLOWED_EXTENSIONS = {"pdf"}
+ALLOWED_EXTENSIONS = {"pdf", "pptx"}
 CONCURRENT_TEXT_PROCESS_LIMIT = 2  # How many files unstructured API can handle at a time.
 
 
@@ -73,8 +85,12 @@ def dir_last_updated(folder):
     )
 
 
+def get_file_extension(filename: str):
+    return filename.rsplit(".", 1)[-1].lower()
+
+
 def allowed_file(filename: str):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and get_file_extension(filename) in ALLOWED_EXTENSIONS
 
 
 # Returns account type (guest, free, paid)
@@ -152,11 +168,19 @@ async def upload_file(request: Request):
     file: FileStorage = files[0]
 
     if not file or not allowed_file(file.filename):
-        return jsonify({"success": False})
+        return jsonify({"success": False, "error_type": "file_denied"})
 
-    # TODO: Write page numbers to the metadata file
-    pdf_reader = pypdf.PdfReader(file)
-    number_of_pages = len(pdf_reader.pages)
+    file_extension = get_file_extension(file.filename)
+    number_of_pages = -1
+    match file_extension:
+        case "pdf":
+            number_of_pages = pdf_processing.get_pages(file)
+        case "pptx":
+            number_of_pages = pptx_processing.get_pages(file)
+        case _:
+            None
+
+    print(f"Extension: {file_extension}", file=sys.stderr)
     account_type = get_acount_type()
 
     if number_of_pages > 3 and account_type == "guest":
@@ -165,7 +189,7 @@ async def upload_file(request: Request):
         return jsonify({"success": False, "error_type": "page_limit"})
 
     print(
-        "User uploaded pdf: {}".format(file.filename),
+        "User uploaded document: {}".format(file.filename),
         file=sys.stderr,
     )
     # Create /file-upload directory if it doesn't exist.
@@ -179,13 +203,18 @@ async def upload_file(request: Request):
     file_contents = file.stream.read()
     # Compute the MD5 hash of the contents
     md5_name = hashlib.md5(file_contents).hexdigest()
-    filename = secure_filename(file.filename).replace(".pdf", "")
+    filename = secure_filename(file.filename).replace(f".{file_extension}", "")
 
-    file.filename = f"{md5_name}.pdf"
+    file.filename = f"{md5_name}.{file_extension}"
 
     # Save the file's metadata to the filesystem
     # TODO: Save IP of user who uploaded.
-    metadata = {"file_name": filename, "md5_name": md5_name, "page_count": number_of_pages}
+    metadata = {
+        "file_name": filename,
+        "md5_name": md5_name,
+        "page_count": number_of_pages,
+        "extension_type": file_extension,
+    }
 
     metadata_file_path = os.path.join(server.config["METADATA_FOLDER"], f"{md5_name}.json")
     with open(metadata_file_path, "w") as metadata_file:
@@ -469,13 +498,12 @@ async def get_exported_document(file):
 async def export_results():
     request_form = await request.form
     try:
-        #file_name = request_form.get("file_name")
+        # file_name = request_form.get("file_name")
         md5_name = request_form.get("md5_name")
         conversion_type = request_form.get("conversion_type")
         export_type = request_form.get("export_type")
         flashcard_sets_str = request_form.get("flashcard_sets")
         flashcard_sets = [int(item) for item in flashcard_sets_str.split(",")]
-
 
         # Generate a unique task ID, set it as processing
         task_id = str(uuid.uuid4())
@@ -487,18 +515,12 @@ async def export_results():
         match conversion_type:
             case "flashcards":
                 server.add_background_task(
-                    exporter.export_flashcard,
-                    server,
-                    task_id,
-                    file_id,
-                    md5_name,
-                    export_type,
-                    flashcard_sets
+                    exporter.export_flashcard, server, task_id, file_id, md5_name, export_type, flashcard_sets
                 )
             case _:
                 set_task_status(task_id, "error")
                 return {"error": "No export option for conversion type"}
-                
+
         return jsonify({"task_id": task_id, "file_id": file_id, "export_type": export_type})
     except Exception as e:
         error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
@@ -555,19 +577,23 @@ async def post_convert_file():
 
         print(f"*** Converting {filename} to {convert_type} ***", file=sys.stderr)
 
+        # FIXME: Get extension_type from md5 metadata
+        extension_type = get_file_extension(filename)
+
         match convert_type:
             case "text":
                 server.add_background_task(
-                    pdf_processing.async_pdf2json,
+                    document_processing.async_document2json,
                     server,
                     filename,
                     md5_name,
+                    extension_type,
                     task_id,
                     request.remote_addr,
                 )
             case "flashcards":
                 server.add_background_task(
-                    pdf_processing.async_json2flashcards,
+                    document_processing.async_json2flashcards,
                     server,
                     filename,
                     md5_name,
@@ -575,7 +601,7 @@ async def post_convert_file():
                 )
             case "keywords":
                 server.add_background_task(
-                    pdf_processing.async_json2keywords,
+                    document_processing.async_json2keywords,
                     server,
                     filename,
                     md5_name,
@@ -583,7 +609,7 @@ async def post_convert_file():
                 )
             case "test":
                 server.add_background_task(
-                    pdf_processing.async_json2test,
+                    document_processing.async_json2test,
                     server,
                     filename,
                     md5_name,

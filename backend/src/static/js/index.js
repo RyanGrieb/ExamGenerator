@@ -271,13 +271,17 @@ function handle_upload_response(request, file, progress_bar) {
 
 function handle_upload_error(request, formatted_file_name) {
   const error_type = request.response["error_type"];
+  console.log(request.response);
+  console.log(error_type);
   switch (error_type) {
     case "page_limit":
       display_error_msg("File exceeds page limit: " + formatted_file_name);
       break;
-
+    case "file_denied":
+      display_error_msg("Filetype not supported");
+      break;
     default:
-      display_error_msg("Unknown error occured.");
+      display_error_msg("Unknown error occured");
       break;
   }
 
