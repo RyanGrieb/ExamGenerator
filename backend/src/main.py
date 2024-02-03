@@ -70,6 +70,8 @@ with open("/run/secrets/stripe", "r") as file:
 
 # Set up Stripe with the API keys
 stripe.api_key = stripe_keys["private"]
+print(stripe.api_key, file=sys.stderr)
+
 
 # server.jinja_env.globals.update(zip=zip)
 # Prevent flask form emptying session variables
@@ -415,7 +417,7 @@ async def create_checkout_session():
 
 @server.route("/add-payment", methods=["GET"])
 async def add_payment():
-    return await render_template("add-payment.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template("add-payment.html", last_updated=dir_last_updated("./src/static"), stripe_pk=stripe_keys["public"])
 
 
 @server.route("/help", methods=["GET"])

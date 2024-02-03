@@ -2,7 +2,7 @@
 {% block head %}
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-    const stripe = Stripe('pk_test_51OcZRiJpxg5os3xYjNr042wj24T39xLVc8chc2ewhq7vBueKUb683wuWIhCdkAKQTvcfm9glsdsT1eWXZuchUXkg00fqCIo5Fy');
+    const stripe = Stripe('{{stripe_pk}}');
 
     initialize();
 
