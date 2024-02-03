@@ -51,7 +51,7 @@ server.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
 server.config["LOG_FOLDER"] = LOG_FOLDER
 server.config["EXPORT_FOLDER"] = EXPORT_FOLDER
 server.config["METADATA_FOLDER"] = METADATA_FOLDER
-server.config["MAX_CONTENT_LENGTH"] = 15 * 1000 * 1024  # 15mb
+server.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024  # 15mb
 server.config["CONCURRENT_TEXT_PROCESS_LIMIT"] = CONCURRENT_TEXT_PROCESS_LIMIT
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 
@@ -417,7 +417,9 @@ async def create_checkout_session():
 
 @server.route("/add-payment", methods=["GET"])
 async def add_payment():
-    return await render_template("add-payment.html", last_updated=dir_last_updated("./src/static"), stripe_pk=stripe_keys["public"])
+    return await render_template(
+        "add-payment.html", last_updated=dir_last_updated("./src/static"), stripe_pk=stripe_keys["public"]
+    )
 
 
 @server.route("/help", methods=["GET"])
