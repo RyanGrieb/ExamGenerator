@@ -1,25 +1,22 @@
 {% extends 'base.html' %}
 {% block head %}
-{% endblock %} {% block body %}
-<div id="toc-container">
-    <p class="toc-title">Table of Contents</p>
-    <ul class="toc-list">
-        <li><a href="#help-faq">Frequently Asked Questions</a></li>
-        <li><a href="#help-discord">Join Discord</a></li>
-        <li><a href="#tba">TBA</a></li>
-    </ul>
-</div>
+{% endblock %}
+{% block body %}
+
 <div id="help-faq">
-    <h3>Frequently Asked Questions:</h3>
-    <p>Q: What types of files can I upload?<br>A: Currently only PDF files.</p>
-    <p>Q: What can I generate?<br>A: You can generate flashcards, keyword/definition pairs, and test/quiz questions.</p>
-    <p>Q: What are the export options?<br>A: Currently disabled, but in the future you can export to PDF and Excel.</p>
+    <h1>Frequently Asked Questions:</h1>
+    <div>
+        <p>Q: What types of files can I upload?<br>A: Currently only PDF & PPTX files.</p>
+        <p>Q: What can I generate?<br>A: You can generate flashcards, keyword/definition pairs, and test/quiz questions.
+        </p>
+        <p>Q: What are the export options?<br>A: Currently only flashcards can be exported to a new printable PDF.</p>
+    </div>
 </div>
 
 <div id="help-discord">
     <h3>Join Our Discord:</h3>
     <section>
-        <a href="https://discord.gg/Ehfe2SWZkQ" class="button-1" style="width: 300px;">Join
+        <a href="#help-discord" class="button-1" style="width: 300px;">Join
             Our Discord Server!</a>
     </section>
 </div>

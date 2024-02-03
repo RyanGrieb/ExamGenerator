@@ -155,7 +155,9 @@ p {
 
 #help-faq {
   font-family: var(--font-family);
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 #help-discord {

@@ -42,6 +42,7 @@
 
 
 * Not as important things to do *
+- Write chmod script to renew https certs. & restart the proxy-https container.
 - Handle stripe user deleted while card is connected.
 - Confirm email prompt
 - Save uploaded files w/ user account in DB.
