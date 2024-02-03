@@ -16,6 +16,43 @@ GPT_MODEL = "gpt-3.5-turbo-1106"
 pdf2json_processes = 0
 
 
+def merge_qa_lines(qa_sets: list[str]):
+    """
+    Sometimes we have newlines after Q: or A: because GPT is fucking stupid. Here we just merge them onto Q: or A: depending on the line.
+    Every line should be Q:, then A:, then Q: then A: ect... If not, merge the line into the question or answer.
+    """
+    merged_list = []
+
+    current_line = None  # FIXME: We assume that our qa_set beings with a question. Could break shit if it's not.
+    current_question = None
+    current_answer = None
+
+    for line in qa_sets:
+        if line.startswith("Q:"):
+            current_line = "q"
+            current_question = line
+            # append the previous answer (A:) to merged_list
+            if current_answer:
+                merged_list.append(current_answer)
+        elif line.startswith("A:"):
+            current_line = "a"
+            current_answer = line
+            # append the previous answer (Q:) to merged_list
+            if current_question:
+                merged_list.append(current_question)
+        else:
+            # If we are a separate line, we need to merge into our current_line
+            if current_line == "q":
+                current_question += f" {line}"
+            elif current_line == "a":
+                current_answer += f" {line}"
+
+    # Append the last answer to merged_list
+    merged_list.append(current_answer)
+
+    return merged_list
+
+
 def text_has_table_expression(text):
     """
     Check if the text has the pattern: 'Table xx.xx'.
@@ -393,6 +430,25 @@ async def gpt_generate_definitions(server, md5_name, data):
 
 
 async def gpt_generate_qa(server, md5_name, data):
+
+    async def reprocess_response(response_data):
+        prompt = f"Fill any empty answer (A:) with a correct answer to the question (Q:) above. Your output is *REQUIRED!!!!* include the QUESTION (Q:) AND ANSWER (A:) or everyone dies. Here is the data to process: {response_data}"
+
+        response = await openai.ChatCompletion.acreate(
+            model=GPT_MODEL,
+            messages=[
+                # {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+        )
+        response_data: str = response["choices"][0]["message"]["content"]
+        logger.debug("***************!!!! REPROCESSING: ")
+        logger.debug(response_data)
+        # Edgecase: Sometimes GPT returns Q&A set with [NEWLINE] instead of '\n'. Handle it accordingly.
+        response_data = response_data.replace("[NEWLINE]", "\n")
+        return response_data
+
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: gpt_generate_qa")
 
@@ -420,16 +476,23 @@ async def gpt_generate_qa(server, md5_name, data):
     # print(response_data)
     logger.debug(response_data)
 
+    # response_data = await reprocess_response(response_data)
+
     # Edgecase: ??? Forgot. my bad.
     if "Q2A: None" in response_data:
         return None
 
     qa_sets = response_data.split("\n")
-    qa_sets = [qa_set for qa_set in qa_sets if qa_set != ""]
+    qa_sets = [qa_set for qa_set in qa_sets if qa_set != ""]  # Remove any empty lines
+
+    # Edgecase: Some question/answer responses may have newlines, merge them into the same line
+    qa_sets = merge_qa_lines(qa_sets)
 
     if len(qa_sets) % 2 != 0:
         print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a, or additional output.)!!!", file=sys.stderr)
         logger.warn("UNEVEN Q&A RESPONSE (mssing q or a)!!")
+        logger.info("QA-SETS: ")
+        logger.info(qa_sets)
 
     # Remove any lines not containing Q: or A:.
     qa_sets = [line for line in qa_sets if "Q:" in line or "A:" in line]
@@ -438,7 +501,7 @@ async def gpt_generate_qa(server, md5_name, data):
     new_qa_sets = []
     existing_questions = []
     existing_answers = []
-
+    print(qa_sets, file=sys.stderr)
     for i in range(0, len(qa_sets), 2):
         question = qa_sets[i]
         answer = qa_sets[i + 1]
@@ -647,46 +710,48 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: async_json2flashcard")
 
-    try:
-        # Create directory if it doesn't exist.
-        os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
-        processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
+    # try:
+    # Create directory if it doesn't exist.
+    os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
+    processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
 
-        with FileLock(f"{processed_file}.lock"):
-            # Check if file already exists and q&a for it was generated, if so, set the task status as completed
-            if os.path.isfile(processed_file):
-                with open(processed_file, "r") as file:
-                    if "flashcards" in json.load(file):
-                        logger.debug(f"Flashcards already exists for {filename}, returning...")
-                        set_task_status(task_id, "completed")
-                        return
+    with FileLock(f"{processed_file}.lock"):
+        # Check if file already exists and q&a for it was generated, if so, set the task status as completed
+        if os.path.isfile(processed_file):
+            with open(processed_file, "r") as file:
+                if "flashcards" in json.load(file):
+                    logger.debug(f"Flashcards already exists for {filename}, returning...")
+                    set_task_status(task_id, "completed")
+                    return
 
-        pdf_text = json2text(server, md5_name)
+    pdf_text = json2text(server, md5_name)
 
-        logger.debug("JSON text (converted from JSON): ")
-        logger.debug(pdf_text)
+    logger.debug("JSON text (converted from JSON): ")
+    logger.debug(pdf_text)
 
-        truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
-        logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
+    truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
+    logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
-        generated_qa = []
-        for index, text_chunk in enumerate(truncated_pdf_text):
-            qa = await gpt_generate_qa(server, md5_name, text_chunk)
-            if qa is None:
-                continue
-            generated_qa = generated_qa + qa
-            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
+    generated_qa = []
+    for index, text_chunk in enumerate(truncated_pdf_text):
+        qa = await gpt_generate_qa(server, md5_name, text_chunk)
+        if qa is None:
+            continue
+        generated_qa = generated_qa + qa
+        set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
 
-        append_json_value_to_file(processed_file, "flashcards", generated_qa)
-        set_task_status(task_id, "completed")
-        logger.debug("Flashcard Generation Successful.")
+    append_json_value_to_file(processed_file, "flashcards", generated_qa)
+    set_task_status(task_id, "completed")
+    logger.debug("Flashcard Generation Successful.")
 
+    """
     except Exception as e:
         error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
         print(error_message, file=sys.stderr)
         logger.error(error_message)
         logger.error(traceback.format_exc())
         set_task_status(task_id, "error")
+    """
 
 
 def append_json_value_to_file(filename: str, key: str, value: object):

@@ -10,6 +10,7 @@ import json
 
 PAGE_HEIGHT = defaultPageSize[1]
 PAGE_WIDTH = defaultPageSize[0]
+FLASHCARD_SETS_EACH_PAGE = 9
 styles = getSampleStyleSheet()
 
 
@@ -39,7 +40,6 @@ def main():
         qa_sets = []
         curret_qa_set = []
         lines = file.read().splitlines()
-        print(lines)
         for index, line in enumerate(lines):
             if (line.startswith("Q:") and len(curret_qa_set) > 0) or index >= len(lines) - 1:
                 # If were the last element, append it to the current_qa_set before we add the lest set.
@@ -97,7 +97,18 @@ if __name__ == "__main__":
     main()
 
 
-def export_flashcard_as_pdf(server: Quart, file_id: str, md5_name: str):
+def pdf_draw_flashcard_lines(canvas: Canvas):
+    # Draw vertical line down the page.
+    canvas.line(PAGE_WIDTH / 2, 0, PAGE_WIDTH / 2, PAGE_HEIGHT)
+    # Based on how many question/answer sets we want, draw our respective lines
+    for i in range(0, FLASHCARD_SETS_EACH_PAGE):
+        y_offset = i * (PAGE_HEIGHT / (FLASHCARD_SETS_EACH_PAGE - 1))
+        # Draw horizontal lines across the page
+        canvas.setDash(3, 3)  # Ensure these horizontal lines are dashed
+        canvas.line(0, y_offset, PAGE_WIDTH, y_offset)
+
+
+def export_flashcard_as_pdf(server: Quart, file_id: str, md5_name: str, flashcard_sets):
     """
     Generates a pdf file of all Q&A sets from the provided files.
     """
@@ -105,46 +116,52 @@ def export_flashcard_as_pdf(server: Quart, file_id: str, md5_name: str):
     styleSheet = getSampleStyleSheet()
     style = styleSheet["BodyText"]
 
-    availableWidth = PAGE_WIDTH - 40
-    availableHeight = PAGE_HEIGHT - 20
+    qa_sets = get_flashcard_sets(server, md5_name, flashcard_sets)
 
-    qa_sets = get_flashcard_sets(server, md5_name)
+    pdf_draw_flashcard_lines(canvas)
 
+    section_height = PAGE_HEIGHT / (FLASHCARD_SETS_EACH_PAGE - 1)
+
+    i = 0
     for set in qa_sets:
+        y_offset = PAGE_HEIGHT - i * section_height
+
+        if y_offset <= 0:
+            # print("new page", file=sys.stderr)
+            canvas.showPage()
+            pdf_draw_flashcard_lines(canvas)
+            i = 0
+            y_offset = PAGE_HEIGHT - i * section_height
+
+        # print(f"y offset: {y_offset}", file=sys.stderr)
         question = set[0]
         answers = set[1:]
 
+        # Draw question text
         question_paragraph = Paragraph(question, style)
+        _, question_height = question_paragraph.wrap(PAGE_WIDTH / 2 - 20, PAGE_HEIGHT)
+        question_paragraph.drawOn(canvas, 10, y_offset - section_height / 2 - question_height / 2)
 
-        _, question_height = question_paragraph.wrap(availableWidth, availableHeight)
+        # print(f"{question} at y: {y_offset - section_height / 2 - question_height / 2}", file=sys.stderr)
 
-        if availableHeight - question_height <= 80:
-            canvas.showPage()
-            availableHeight = PAGE_HEIGHT - 20
-
-        # print(f"w: {width}, h: {question_height}")
-        canvas.line(0, availableHeight, PAGE_WIDTH, availableHeight)
-        availableHeight -= 20  # Slap on some padding at the top after we draw the line.
-        availableHeight -= question_height
-        question_paragraph.drawOn(canvas, 20, availableHeight)
-
+        # Draw answer text
         for answer in answers:
             answer_paragraph = Paragraph(answer, style)
-            _, answer_height = answer_paragraph.wrap(availableWidth, availableHeight)
-            answer_paragraph.drawOn(canvas, 20, availableHeight - (answer_height))
-            availableHeight -= answer_height + 20
+            _, answer_height = answer_paragraph.wrap(PAGE_WIDTH / 2 - 20, PAGE_HEIGHT)
+            answer_paragraph.drawOn(canvas, PAGE_WIDTH / 2 + 10, y_offset - section_height / 2 - answer_height / 2)
 
-        canvas.line(0, availableHeight, PAGE_WIDTH, availableHeight)
+        # Increment y section.
+        i += 1
 
     canvas.save()
     return True
 
 
-def export_flashcard_as_anki(server, file_id, md5_name):
+def export_flashcard_as_anki(server, file_id, md5_name, flashcard_sets):
     None
 
 
-def export_flashcard(server: Quart, task_id, file_id, md5_name, export_type):
+def export_flashcard(server: Quart, task_id, file_id, md5_name, export_type, flashcard_sets):
     """
     Chooses & runs export_flashcard_as_??? function based on export_type
     """
@@ -156,21 +173,22 @@ def export_flashcard(server: Quart, task_id, file_id, md5_name, export_type):
 
     function_dict = {"anki": export_flashcard_as_anki, "pdf": export_flashcard_as_pdf}
 
-    if function_dict[export_type](server, file_id, md5_name):
+    if function_dict[export_type](server, file_id, md5_name, flashcard_sets):
         set_task_status(task_id, "completed")
     else:
         set_task_status(task_id, "error")
 
 
-def get_flashcard_sets(server: Quart, md5_name: str) -> list[str]:
+def get_flashcard_sets(server: Quart, md5_name: str, flashcard_sets: list[int]) -> list[str]:
     """
     Loads the Q&A sets from a file and returns it as a variable.
     """
-
     qa_sets = []
     with open(f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json', "r") as file:
         flashcard_sets_json = json.load(file)["flashcards"]
-        for flashcard_set_json in flashcard_sets_json:
-            qa_sets.append(flashcard_set_json)
-    print(qa_sets, file=sys.stderr)
+        qa_sets = [
+            flashcard_set_json
+            for index, flashcard_set_json in enumerate(flashcard_sets_json)
+            if index in flashcard_sets
+        ]
     return qa_sets

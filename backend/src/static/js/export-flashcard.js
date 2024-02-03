@@ -44,13 +44,11 @@ async function export_as_pdf() {
       async () => {
         // The task is completed, do a GET request for the PDF file.
         // The task is completed, do a GET request for the PDF file.
-        const fileResponse = await fetch(`/export/${file_id}.pdf`);
-        if (fileResponse.ok) {
-          const fileBlob = await fileResponse.blob();
-          const fileUrl = window.URL.createObjectURL(fileBlob);
+        const file_response = await fetch(`/export/${file_id}.pdf`);
+        if (file_response.ok) {
           // Now you can use fileUrl to display or download the file
           // For example, to display the file in a new tab:
-          window.open(fileUrl);
+          window.open(file_response.url);
           // Or to download the file:
           // const a = document.createElement('a');
           // a.href = fileUrl;

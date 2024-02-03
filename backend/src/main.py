@@ -473,6 +473,8 @@ async def export_results():
         md5_name = request_form.get("md5_name")
         conversion_type = request_form.get("conversion_type")
         export_type = request_form.get("export_type")
+        flashcard_sets_str = request_form.get("flashcard_sets")
+        flashcard_sets = [int(item) for item in flashcard_sets_str.split(",")]
 
 
         # Generate a unique task ID, set it as processing
@@ -491,6 +493,7 @@ async def export_results():
                     file_id,
                     md5_name,
                     export_type,
+                    flashcard_sets
                 )
             case _:
                 set_task_status(task_id, "error")
