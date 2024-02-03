@@ -150,111 +150,6 @@ function add_qa_set_to_page(filename, md5_name, qa_set, final_generation = false
   });
 }
 
-// Tell the server to convert specific files to a specific export_type
-async function post_export_results(file_names, md5_names, export_type) {
-  try {
-    // Create a FormData object to send data with the POST request
-    const formData = new FormData();
-    formData.append("file_names", JSON.stringify(file_names));
-    formData.append("md5_names", JSON.stringify(md5_names));
-    formData.append("export_type", export_type);
-
-    // Send a POST request to the server and wait for the response
-    const response = await fetch("/export_results", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (response.ok) {
-      console.log("GOT OK FROM post_export_results");
-
-      const responseData = await response.json();
-      const task_id = responseData.task_id;
-      const file_id = responseData.file_id;
-
-      start_check_task_interval(
-        task_id,
-        () => {
-          window.open(`/exports/${file_id}.${export_type}`);
-          //console.log("Export complete");
-          // FIXME: Send a get request to see what our results are!
-        },
-        () => {
-          //FIXME: Tell the user an error occured when exporting!
-        },
-      );
-    } else {
-      // Handle network or other errors here
-      console.error(`Error sending export request to the server: ${error}`);
-    }
-  } catch (error) {
-    // Handle network or other errors here
-    console.error(`Error sending export request to the server: ${error}`);
-  }
-}
-
-async function get_task_status_json(task_id) {
-  try {
-    const statusResponse = await fetch(`/task_status/${task_id}`, {
-      method: "GET",
-    });
-
-    if (statusResponse.ok) {
-      return await statusResponse.json();
-    } else {
-      return undefined;
-    }
-  } catch (error) {
-    console.log(error);
-    location.reload();
-  }
-}
-
-async function start_check_task_interval(task_id, completedCallback, errorCallback) {
-  const interval = setInterval(async () => {
-    // Send a GET request to check the task status using the task_id
-    const status_data = await get_task_status_json(task_id);
-
-    if (!status_data) {
-      clearInterval(interval); // Stop checking on error
-      console.error(`Error checking task status for task ID ${task_id}`);
-      errorCallback();
-      return;
-    }
-    console.log(status_data);
-
-    //The status_data can be empty if we reload the server while we do this request. Just reload the page.
-    if (Object.keys(status_data).length === 0) {
-      location.reload();
-      return;
-    }
-
-    if (status_data.attributes.convert_type != "text") {
-      if (status_data.attributes && status_data.attributes.md5_name && status_data.attributes.convert_type) {
-        const value = Math.min(0.2 + status_data.progress, 0.95);
-        set_file_progress(status_data.attributes.md5_name, status_data.attributes.convert_type, value);
-      }
-    }
-
-    // Check if the task is complete
-    if (status_data.status === "completed") {
-      clearInterval(interval); // Stop checking once it's complete
-      console.log(`Task with ID ${task_id} is complete.`);
-      completedCallback();
-    } else if (status_data.status === "processing") {
-      console.log(`Task with ID ${task_id} is still processing.`);
-    } else if (status_data.status === "error") {
-      clearInterval(interval); // Stop checking on error
-      console.log(`Task with ID ${task_id} threw error, stopping.`);
-      errorCallback();
-    } else {
-      clearInterval(interval); // Stop checking on error
-      console.error(`Unknown status for task with ID ${task_id}: ${status_data.status}`);
-      errorCallback();
-    }
-  }, 2000); // Check every 2 seconds (adjust this as needed)
-}
-
 // Updates the HTML from the get request. Returns 'ok' if successful or 'error_type' if error occurs.
 async function get_converted_file(file_data, conversion_type) {
   console.log("Fetch generated file set from server:");
@@ -314,6 +209,21 @@ async function post_convert_file(file_data, conversion_type, conversion_options,
       start_check_task_interval(
         task_id,
         () => completeCallback(task_id),
+        (status_data) => {
+          // Interval Callback - Called after every n seconds when checking for the task.
+          //The status_data can be empty if we reload the server while we do this request. Just reload the page.
+          if (Object.keys(status_data).length === 0) {
+            location.reload();
+            return;
+          }
+
+          if (status_data.attributes.convert_type != "text") {
+            if (status_data.attributes && status_data.attributes.md5_name && status_data.attributes.convert_type) {
+              const value = Math.min(0.2 + status_data.progress, 0.95);
+              set_file_progress(status_data.attributes.md5_name, status_data.attributes.convert_type, value);
+            }
+          }
+        },
         () => errorCallback(task_id),
       );
     } else {
@@ -387,7 +297,22 @@ function set_file_status(md5_name, conversion_type, iconName) {
 }
 
 function on_export_click() {
-  window.location.href = `/export-flashcard?filename=${selected_document.filename}&md5_name=${selected_document.md5_name}`;
+  console.log(selected_document);
+  switch (selected_document.conversion_type) {
+    case "flashcards":
+      window.location.href = `/export-flashcard?filename=${selected_document.filename}&md5_name=${selected_document.md5_name}`;
+      break;
+    case "keywords":
+      window.location.href = `/export-keyword?filename=${selected_document.filename}&md5_name=${selected_document.md5_name}`;
+      break;
+    case "test":
+      window.location.href = `/export-test?filename=${selected_document.filename}&md5_name=${selected_document.md5_name}`;
+      break;
+    default:
+      console.log("Error: Could not find conversion type for " + selected_document.conversion_type);
+      break;
+  }
+  //window.location.href = `/export-flashcard?filename=${selected_document.filename}&md5_name=${selected_document.md5_name}`;
 }
 
 function remove_document() {

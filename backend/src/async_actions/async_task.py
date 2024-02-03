@@ -61,6 +61,9 @@ def set_task_progress(task_id: str, progress: float):
 
 
 def set_task_status(task_id: str, status: str):
+    if not task_id:
+        return
+
     if task_id not in running_tasks:
         running_tasks[task_id] = AsyncTask(task_id)
 

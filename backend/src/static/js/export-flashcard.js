@@ -1,3 +1,80 @@
+function toggle_all_checkboxes() {
+  const top_checkbox = document.getElementById("top-checkbox");
+  const checkboxes = document.querySelectorAll('input[name="qa-checkbox"]');
+
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = top_checkbox.checked;
+  });
+}
+
+// returns an array of selected sets 0-n.
+function get_selected_flashcard_sets() {
+  const selectedSlides = [];
+  const checkboxes = document.querySelectorAll('input[name="qa-checkbox"]');
+  checkboxes.forEach((checkbox, index) => {
+    if (checkbox.checked) {
+      selectedSlides.push(index);
+    }
+  });
+  return selectedSlides;
+}
+
+async function export_as_pdf() {
+  const form_data = new FormData();
+  form_data.append("filename", filename);
+  form_data.append("md5_name", md5_name);
+  form_data.append("conversion_type", "flashcards"); // What conversion we did (flashcard, test, keyword)
+  form_data.append("export_type", "pdf");
+  form_data.append("flashcard_sets", get_selected_flashcard_sets());
+
+  // Send a POST request to the server and wait for the response
+  const response = await fetch("/export", {
+    method: "POST",
+    body: form_data,
+  });
+
+  if (response.ok) {
+    const response_data = await response.json();
+    console.log(response_data);
+    const task_id = response_data.task_id;
+    const file_id = response_data.file_id;
+
+    start_check_task_interval(
+      task_id,
+      async () => {
+        // The task is completed, do a GET request for the PDF file.
+        // The task is completed, do a GET request for the PDF file.
+        const fileResponse = await fetch(`/export/${file_id}.pdf`);
+        if (fileResponse.ok) {
+          const fileBlob = await fileResponse.blob();
+          const fileUrl = window.URL.createObjectURL(fileBlob);
+          // Now you can use fileUrl to display or download the file
+          // For example, to display the file in a new tab:
+          window.open(fileUrl);
+          // Or to download the file:
+          // const a = document.createElement('a');
+          // a.href = fileUrl;
+          // a.download = 'filename.pdf';
+          // document.body.appendChild(a);
+          // a.click();
+          // document.body.removeChild(a);
+        } else {
+          console.error("Failed to fetch file:", fileResponse.status);
+        }
+      },
+      (status_data) => {
+        console.log("Still exporting...");
+        console.log(status_data);
+      },
+      () => {
+        console.log("Error:");
+        console.error(response_data);
+      },
+    );
+    // Get PDF file from backend
+  }
+}
+
 window.addEventListener("load", async () => {
   // Get data list from flashcard.
 
@@ -30,6 +107,7 @@ window.addEventListener("load", async () => {
       checkbox.type = "checkbox";
       checkbox.id = `checkbox-${index}`;
       checkbox.name = "qa-checkbox";
+      checkbox.checked = true;
       checkbox.value = index;
 
       // Create div where text is stored
@@ -37,18 +115,18 @@ window.addEventListener("load", async () => {
       text_div.classList.add("data-text");
 
       // Create label for the checkbox
-      const label = document.createElement("label");
-      label.htmlFor = `checkbox-${index}`;
-      label.textContent = qa_pair[0];
+      const question_label = document.createElement("label");
+      question_label.htmlFor = `checkbox-${index}`;
+      question_label.innerHTML = `<u><b>Question:</b></u> ${qa_pair[0]}`;
 
       // Create paragraph for the answer
-      const answer_paragraph = document.createElement("label");
-      answer_paragraph.textContent = qa_pair[1];
+      const answer_label = document.createElement("label");
+      answer_label.innerHTML = `<u><b>Answer:</b></u> ${qa_pair[1]}`;
 
       // Append checkbox, label, and answer paragraph to the list item
       li_element.appendChild(checkbox);
-      text_div.appendChild(label);
-      text_div.appendChild(answer_paragraph);
+      text_div.appendChild(question_label);
+      text_div.appendChild(answer_label);
       li_element.appendChild(text_div);
 
       // Append list item to the unordered list

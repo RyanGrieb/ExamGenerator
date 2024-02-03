@@ -13,3 +13,8 @@
   flex-direction: column;
   padding-left: 10px;
 }
+
+.export-list-top {
+  padding-left: 12px;
+  padding-top: 20px;
+}

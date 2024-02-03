@@ -5,10 +5,10 @@ import hashlib
 import uuid
 import json
 import stripe
+from .async_actions import exporter
 from .async_actions import pdf_processing
-from .async_actions.exporter import export_files
 from .async_actions.async_task import *
-from quart import Quart, Request, render_template, flash, request, redirect, url_for, session, jsonify, send_file
+from quart import Quart, Request, render_template, flash, request, redirect, url_for, session, jsonify, send_file, abort
 from quart_session import Session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
@@ -297,6 +297,7 @@ async def profile():
     if not session.get("logged_in"):
         return redirect(url_for("login"))
 
+    # FIXME: get_customer_invoice() is slow, use cache w/ session.() and talk to our DB.
     charge_date, amount = get_customer_invoice()
 
     return await render_template(
@@ -435,31 +436,44 @@ async def export_flashcard():
     )
 
 
+@server.route("/export-keyword", methods=["GET"])
+async def export_keyword():
+    filename = request.args.get("filename")
+    md5_name = request.args.get("md5_name")
+    return await render_template(
+        "export-keyword.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static")
+    )
+
+
+@server.route("/export-test", methods=["GET"])
+async def export_test():
+    filename = request.args.get("filename")
+    md5_name = request.args.get("md5_name")
+    return await render_template(
+        "export-test.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static")
+    )
+
+
 # Get the export file of the associated <file> name.
-@server.route("/exports/<file>", methods=["GET"])
+@server.route("/export/<file>", methods=["GET"])
 async def get_exported_document(file):
     export_folder = server.config["EXPORT_FOLDER"]
-    return await send_file(f"{export_folder}/{file}", as_attachment=False)
+    file_path = f"{export_folder}/{file}"
+    try:
+        return await send_file(file_path, as_attachment=False)
+    except FileNotFoundError:
+        abort(404, f"File {file} not found")
 
 
-# Retrieve the status of a specific task
-@server.route("/task_status/<task_id>", methods=["GET"])
-def get_task_status(task_id):
-    task = running_tasks.get(task_id)
-
-    if task == None:
-        return {}
-
-    return task.get_status_json()
-
-
-@server.route("/export_results", methods=["POST"])
+@server.route("/export", methods=["POST"])
 async def export_results():
     request_form = await request.form
     try:
-        file_names = request_form.get("file_names")
-        md5_names = json.loads(request_form.get("md5_names"))
+        #file_name = request_form.get("file_name")
+        md5_name = request_form.get("md5_name")
+        conversion_type = request_form.get("conversion_type")
         export_type = request_form.get("export_type")
+
 
         # Generate a unique task ID, set it as processing
         task_id = str(uuid.uuid4())
@@ -468,24 +482,26 @@ async def export_results():
         set_task_status(task_id, "processing")
 
         # Begin the export process
-        server.add_background_task(
-            export_files,
-            server,
-            task_id,
-            file_id,
-            md5_names,
-            export_type,
-        )
-
-        # Return the task ID & file ID to the client
-        # FIXME: Return file extension associated with our export_type
-        # file_extension = exporter.get_file_extension(export_type)
-        return jsonify({"task_id": task_id, "file_id": file_id})
+        match conversion_type:
+            case "flashcards":
+                server.add_background_task(
+                    exporter.export_flashcard,
+                    server,
+                    task_id,
+                    file_id,
+                    md5_name,
+                    export_type,
+                )
+            case _:
+                set_task_status(task_id, "error")
+                return {"error": "No export option for conversion type"}
+                
+        return jsonify({"task_id": task_id, "file_id": file_id, "export_type": export_type})
     except Exception as e:
-        print("Error:", str(e), file=sys.stderr)
-        return "Error processing the request"
-
-    return None
+        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        print(error_message, file=sys.stderr)
+        set_task_status(task_id, "error")
+        return {"error": error_message}
 
 
 @server.route("/convertfile/", methods=["GET"])
@@ -572,7 +588,7 @@ async def post_convert_file():
                     conversion_options,
                 )
             case _:
-                set_task_status("error")
+                set_task_status(task_id, "error")
                 return {"error:": "No convert_type found."}
 
         # Update the pages_processed for the user, if they exist
@@ -597,6 +613,17 @@ async def results():
         "results.html",
         last_updated=dir_last_updated("./src/static"),
     )
+
+
+# Retrieve the status of a specific task
+@server.route("/task_status/<task_id>", methods=["GET"])
+def get_task_status(task_id):
+    task = running_tasks.get(task_id)
+
+    if task == None:
+        return {}
+
+    return task.get_status_json()
 
 
 if __name__ == "__main__":

@@ -10,6 +10,15 @@
 {% block body %}
 <div class="export-layout">
     <h2>Export {{ filename }}</h2>
-    <div class="export-data-list"></div>
+    <div class="export-options">
+        <p>Export options:</p>
+        <button class="button-1" onclick="export_as_pdf()" style="width: 225px;">Export as PDF</button>
+    </div>
+    <p>{{ error_msg }}</p>
+    <div class="export-data-list">
+        <div class="export-list-top">
+            <input type="checkbox" checked="true" id="top-checkbox" onchange="toggle_all_checkboxes()">
+        </div>
+    </div>
 </div>
 {% endblock %}
