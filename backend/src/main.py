@@ -507,6 +507,10 @@ async def export_results():
         conversion_type = request_form.get("conversion_type")
         export_type = request_form.get("export_type")
         flashcard_sets_str = request_form.get("flashcard_sets")
+
+        if len(flashcard_sets_str) <= 0:
+            return {"error": "Empty flashcard sets"}
+
         flashcard_sets = [int(item) for item in flashcard_sets_str.split(",")]
 
         # Generate a unique task ID, set it as processing

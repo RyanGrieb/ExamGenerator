@@ -165,6 +165,10 @@ def export_flashcard(server: Quart, task_id, file_id, md5_name, export_type, fla
     """
     Chooses & runs export_flashcard_as_??? function based on export_type
     """
+    if len(flashcard_sets) <= 0:
+        set_task_status(task_id, "error")
+        return
+
     # FIXME: Check if export_type doesn't exist, and return false if so
 
     # Create the export folder if needed

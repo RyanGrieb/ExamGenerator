@@ -15,11 +15,17 @@
     ondragover="dragOverHandler(event);">
     <div class="center-inside-elems">
         <form method="post" enctype="multipart/form-data">
-            <label class="button-1" for="file-upload">
-                <i class="fa fa-cloud-upload"></i> Upload Files
+            <label class="button-1" for="file-upload"
+                style="display: flex; flex-direction: column; height: 75px; width: 225px;">
+                <div>
+                    <i class="fa fa-cloud-upload"></i> Upload Files
+                </div>
+                <label style="font-size: 15px; padding: 0; margin: 0;">(pdf & power-point only)</label>
             </label>
-            <input id="file-upload" type="file" name="file" accept="application/pdf" onchange="upload_files()"
-                multiple></input>
+            <input id="file-upload" type="file" name="file"
+                accept="application/pdf, application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                onchange="upload_files()" multiple></input>
+
         </form>
 
         {% if session.logged_in %}

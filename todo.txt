@@ -1,7 +1,7 @@
 * ASAP *
+- Handle exception when we try to export 0 flashcards
 - Test payments on production
 - Create admin account to test on production
-- Don't have convert button appear if other files are still uploading
 - Google adsense
 - Google ad compaign: Hire some dude off fiverr and make the following images
     image: Minimum size: 600 x 314 pixels. Recommended size: 1200 x 628 pixels. Max size: 4096 x 4096 pixels.
