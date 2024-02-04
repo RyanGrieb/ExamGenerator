@@ -1,5 +1,6 @@
 * ASAP *
 - Test payments on production
+- Create admin account to test on production
 - Don't have convert button appear if other files are still uploading
 - Google adsense
 - Google ad compaign: Hire some dude off fiverr and make the following images

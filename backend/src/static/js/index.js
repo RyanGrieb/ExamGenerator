@@ -92,7 +92,13 @@ function dragOverHandler(event) {
 
 function get_uploaded_file_count() {
   const fileList = document.querySelector(".convert-region ul");
-  return fileList.querySelectorAll("li").length;
+  let count = 0;
+  for (li_element of fileList.querySelectorAll("li")) {
+    if (li_element.getAttribute("uploaded") === "true") {
+      count++;
+    }
+  }
+  return count;
 }
 
 // Format our filename such that it's able to be put inside HTML tags.
@@ -152,6 +158,7 @@ function show_convert_button(value) {
 function create_li_element(formatted_file_name, file, fileList) {
   const fileNameLi = document.createElement("li");
   fileNameLi.id = `upload-li-${formatted_file_name}`;
+  fileNameLi.setAttribute("uploaded", "false");
 
   const liDiv = document.createElement("div");
   const removeButton = create_remove_file_button(formatted_file_name);
@@ -304,9 +311,11 @@ function handle_upload_success(request, file, formatted_file_name, progress_bar)
   const response_file_name = request.response["metadata"]["file_name"];
   const response_md5_name = request.response["metadata"]["md5_name"];
   const response_page_count = request.response["metadata"]["page_count"];
-  const fileNameP = document.getElementById(`upload-li-${formatted_file_name}`).querySelector("p");
+  const file_li = document.getElementById(`upload-li-${formatted_file_name}`);
+  const fileNameP = file_li.querySelector("p");
   const fileList = document.querySelector(".convert-region ul");
 
+  file_li.setAttribute("uploaded", "true");
   fileNameP.innerHTML = `${file.name} - 100%`;
   progress_bar.animate(1);
 
