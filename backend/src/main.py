@@ -1,5 +1,5 @@
 import sys
-import os, inspect
+import os
 import openai
 import hashlib
 import uuid
@@ -7,7 +7,7 @@ import json
 import stripe
 from .async_actions import exporter
 from .async_actions import document_processing, pdf_processing, pptx_processing
-from .async_actions.async_task import *
+from .async_actions.async_task import set_task_status, set_task_attribute, running_tasks
 from quart import (
     Quart,
     Request,
@@ -25,7 +25,6 @@ from quart_session import Session
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 from .database import DBManager
-import stripe
 
 import traceback
 from datetime import datetime
@@ -39,7 +38,10 @@ LOG_FOLDER = "./data/file-log"
 METADATA_FOLDER = "./data/file-metadata"
 EXPORT_FOLDER = "./data/exports"
 ALLOWED_EXTENSIONS = {"pdf", "pptx"}
-CONCURRENT_TEXT_PROCESS_LIMIT = 2  # How many files unstructured API can handle at a time.
+CONCURRENT_TEXT_PROCESS_LIMIT = (
+    2  # How many files unstructured API can handle at a time.
+)
+SUPPORT_EMAIL = "???@???.com"
 
 
 # Configure quart
@@ -53,6 +55,7 @@ server.config["EXPORT_FOLDER"] = EXPORT_FOLDER
 server.config["METADATA_FOLDER"] = METADATA_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024  # 15mb
 server.config["CONCURRENT_TEXT_PROCESS_LIMIT"] = CONCURRENT_TEXT_PROCESS_LIMIT
+server.config["SUPPORT_EMAIL"] = SUPPORT_EMAIL
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 
 # Setup redis
@@ -70,7 +73,6 @@ with open("/run/secrets/stripe", "r") as file:
 
 # Set up Stripe with the API keys
 stripe.api_key = stripe_keys["private"]
-print(stripe.api_key, file=sys.stderr)
 
 
 # server.jinja_env.globals.update(zip=zip)
@@ -83,7 +85,11 @@ openai.api_key = OPENAI_API_KEY
 
 def dir_last_updated(folder):
     return str(
-        max(os.path.getmtime(os.path.join(root_path, f)) for root_path, _, files in os.walk(folder) for f in files)
+        max(
+            os.path.getmtime(os.path.join(root_path, f))
+            for root_path, _, files in os.walk(folder)
+            for f in files
+        )
     )
 
 
@@ -128,10 +134,12 @@ def get_customer_invoice():
     database = DBManager(pass_file="/run/secrets/db-password")
     customer_id = database.get_stripe_user_id(session.get("email"))
 
-    response = database.run_query(f"SELECT subscription_item_id FROM stripe_users WHERE user_id = '{customer_id}'")
-    subscription_item_id = response[0]
+    # response = database.run_query(f"SELECT subscription_item_id FROM stripe_users WHERE user_id = '{customer_id}'")
+    # subscription_item_id = response[0]
 
-    response = database.run_query(f"SELECT subscription_id FROM stripe_users WHERE user_id = '{customer_id}'")
+    response = database.run_query(
+        f"SELECT subscription_id FROM stripe_users WHERE user_id = '{customer_id}'"
+    )
     subscription_id = response[0]
 
     if not subscription_id:
@@ -218,7 +226,9 @@ async def upload_file(request: Request):
         "extension_type": file_extension,
     }
 
-    metadata_file_path = os.path.join(server.config["METADATA_FOLDER"], f"{md5_name}.json")
+    metadata_file_path = os.path.join(
+        server.config["METADATA_FOLDER"], f"{md5_name}.json"
+    )
     with open(metadata_file_path, "w") as metadata_file:
         json.dump(metadata, metadata_file)
 
@@ -239,7 +249,9 @@ async def home():
     if request.method == "POST":
         return await upload_file(request)
 
-    return await render_template("index.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "index.html", last_updated=dir_last_updated("./src/static")
+    )
 
 
 @server.route("/pdf2json-processes", methods=["GET"])
@@ -264,7 +276,9 @@ async def register():
 
         if password != confirm_password:
             return await render_template(
-                "register.html", last_updated=dir_last_updated("./src/static"), error_msg="Passwords do not match"
+                "register.html",
+                last_updated=dir_last_updated("./src/static"),
+                error_msg="Passwords do not match",
             )
 
         database = DBManager(pass_file="/run/secrets/db-password")
@@ -272,12 +286,16 @@ async def register():
 
         if response != 0:
             return await render_template(
-                "register.html", last_updated=dir_last_updated("./src/static"), error_msg=error_msg
+                "register.html",
+                last_updated=dir_last_updated("./src/static"),
+                error_msg=error_msg,
             )
 
         return redirect(url_for("login"))
 
-    return await render_template("register.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "register.html", last_updated=dir_last_updated("./src/static")
+    )
 
 
 @server.route("/login", methods=["GET", "POST"])
@@ -307,9 +325,13 @@ async def login():
         else:
             # User doesn't exist or password is incorrect
             return await render_template(
-                "login.html", last_updated=dir_last_updated("./src/static"), error_msg=error_msg
+                "login.html",
+                last_updated=dir_last_updated("./src/static"),
+                error_msg=error_msg,
             )
-    return await render_template("login.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "login.html", last_updated=dir_last_updated("./src/static")
+    )
 
 
 @server.route("/logout", methods=["POST"])
@@ -358,14 +380,24 @@ async def handle_checkout_session():
     # Create/fetch stripe customer
     stripe_user_id = database.get_stripe_user_id(session.get("email"))
     if not stripe_user_id:
-        customer = stripe.Customer.create(email=session.get("email"), description="From PDF2Flashcards backend")
+        customer = stripe.Customer.create(
+            email=session.get("email"), description="From PDF2Flashcards backend"
+        )
         database.add_stripe_customer(customer)
         stripe_user_id = customer.id
+    else:
+        customer = stripe.Customer.retrieve(stripe_user_id)
     # else:
     #    print("!!!!!!!! RETRIEVE", file=sys.stderr)
     #    customer = stripe.Customer.retrieve(stripe_user_id)
 
     # FIXME: Ensure that stripe actually has a user_id here, our DB might get fucked.
+
+    # Remove any existing payment methods (condition where user is replacing their card)
+    payment_methods_json = customer.list_payment_methods()["data"]
+
+    for payment_method in payment_methods_json:
+        stripe.PaymentMethod.detach(payment_method["id"])
 
     # Attach payment method from the SetupIntent to the Stripe customer
     stripe.PaymentMethod.attach(
@@ -382,15 +414,28 @@ async def handle_checkout_session():
         },
     )
 
-    subscription = stripe.Subscription.create(customer=stripe_user_id, items=[{"price": stripe_keys["product_id"]}])
-    # print(subscription, file=sys.stderr)
-    # print("===========", file=sys.stderr)
-    # Assuming subscription is a Stripe Subscription object
-    subscription_item_id = subscription["items"]["data"][0]["id"]
-    # print(subscription_item_id, file=sys.stderr)
+    billing_cycle_anchor_config = {
+        "day_of_month": 1,
+        "hour": 12,
+        "minute": 30,
+        "second": 0,
+    }
 
-    # Assign the subscription_id and subscription_item_id to our stripe_users table
-    database.assign_user_subscriptions(stripe_user_id, subscription.id, subscription_item_id)
+    # Create a new subscription for the user, if one doesn't exist already.
+    existing_subscriptions = stripe.Subscription.list(customer=stripe_user_id)
+    if len(existing_subscriptions["data"]) <= 0:
+        subscription = stripe.Subscription.create(
+            customer=stripe_user_id,
+            items=[{"price": stripe_keys["product_id"]}],
+            billing_cycle_anchor_config=billing_cycle_anchor_config,
+        )
+        # Assuming subscription is a Stripe Subscription object
+        subscription_item_id = subscription["items"]["data"][0]["id"]
+
+        # Assign the subscription_id and subscription_item_id to our stripe_users table
+        database.assign_user_subscriptions(
+            stripe_user_id, subscription.id, subscription_item_id
+        )
 
     # Update users table & set card_connected to True
     database.set_card_connected(session.get("email"), True)
@@ -402,8 +447,7 @@ async def handle_checkout_session():
 
 @server.route("/create-checkout-session", methods=["POST"])
 async def create_checkout_session():
-    base_url = request.url_root
-    return_url = base_url + "checkout/return?session_id={CHECKOUT_SESSION_ID}"
+    return_url = request.url_root + "checkout/return?session_id={CHECKOUT_SESSION_ID}"
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="setup",
@@ -418,28 +462,103 @@ async def create_checkout_session():
 @server.route("/add-payment", methods=["GET"])
 async def add_payment():
     return await render_template(
-        "add-payment.html", last_updated=dir_last_updated("./src/static"), stripe_pk=stripe_keys["public"]
+        "add-payment.html",
+        last_updated=dir_last_updated("./src/static"),
+        stripe_pk=stripe_keys["public"],
+    )
+
+
+@server.route("/remove-payment", methods=["POST"])
+async def remove_payment():
+    database = DBManager(pass_file="/run/secrets/db-password")
+    customer_id = database.get_stripe_user_id(session.get("email"))
+    payment_method_json = stripe.Customer.list_payment_methods(customer_id, limit=1)
+    payment_id = payment_method_json["data"][0]["id"]
+
+    # Charge the stripe customer if they have a balance > 0.5
+    _, amount = get_customer_invoice()
+    print(f"Amount: {amount}")
+    if amount >= 50:
+        intent = stripe.PaymentIntent.create(
+            amount=amount,
+            currency="usd",
+            customer=customer_id,
+            payment_method=payment_id,
+        )
+        return_url = request.url_root + "/profile"
+        # Confirm the payment intent
+        payment_result = stripe.PaymentIntent.confirm(
+            intent["id"], return_url=return_url
+        )
+        print(payment_result, file=sys.stderr)
+
+    # Cancel the subscription & detach the card from the customer.
+    stripe.Subscription.cancel(database.get_user_subscription_id(customer_id))
+    stripe.PaymentMethod.detach(payment_id)
+
+    # Set our card connected to false.
+    database.run_query(
+        f"UPDATE users SET card_connected = 0 WHERE email='{session.get('email')}'"
+    )
+    session["card_connected"] = False
+
+    return jsonify({"success": True, "return_url": return_url})
+
+
+@server.route("/manage-payment", methods=["GET"])
+async def manage_payment():
+    # Get user card from stripe
+    database = DBManager(pass_file="/run/secrets/db-password")
+    customer_id = database.get_stripe_user_id(session.get("email"))
+
+    if not customer_id:
+        return redirect(url_for("profile"))
+
+    payment_method_json = stripe.Customer.list_payment_methods(customer_id, limit=1)
+
+    if len(payment_method_json["data"]) <= 0:
+        return redirect(url_for("profile"))
+
+    customer_card = payment_method_json["data"][0]["card"]
+    _, amount_due = get_customer_invoice()
+
+    return await render_template(
+        "manage-payment.html",
+        last_updated=dir_last_updated("./src/static"),
+        stripe_pk=stripe_keys["public"],
+        customer_card=customer_card,
+        amount_due=amount_due,
     )
 
 
 @server.route("/help", methods=["GET"])
 async def help():
-    return await render_template("help.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "help.html",
+        last_updated=dir_last_updated("./src/static"),
+        support_email=server.config["SUPPORT_EMAIL"],
+    )
 
 
 @server.route("/flashcard_test", methods=["GET"])
 async def flashcard_test():
-    return await render_template("flashcard_test.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "flashcard_test.html", last_updated=dir_last_updated("./src/static")
+    )
 
 
 @server.route("/flashcard", methods=["GET"])
 async def flashcard():
-    return await render_template("flashcard.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "flashcard.html", last_updated=dir_last_updated("./src/static")
+    )
 
 
 @server.route("/prompt", methods=["GET"])
 async def prompt():
-    return await render_template("prompt.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template(
+        "prompt.html", last_updated=dir_last_updated("./src/static")
+    )
 
 
 # Get the Q&A set of the associated file.
@@ -465,7 +584,10 @@ async def export_flashcard():
     filename = request.args.get("filename")
     md5_name = request.args.get("md5_name")
     return await render_template(
-        "export-flashcard.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static")
+        "export-flashcard.html",
+        filename=filename,
+        md5_name=md5_name,
+        last_updated=dir_last_updated("./src/static"),
     )
 
 
@@ -474,7 +596,10 @@ async def export_keyword():
     filename = request.args.get("filename")
     md5_name = request.args.get("md5_name")
     return await render_template(
-        "export-keyword.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static")
+        "export-keyword.html",
+        filename=filename,
+        md5_name=md5_name,
+        last_updated=dir_last_updated("./src/static"),
     )
 
 
@@ -483,7 +608,10 @@ async def export_test():
     filename = request.args.get("filename")
     md5_name = request.args.get("md5_name")
     return await render_template(
-        "export-test.html", filename=filename, md5_name=md5_name, last_updated=dir_last_updated("./src/static")
+        "export-test.html",
+        filename=filename,
+        md5_name=md5_name,
+        last_updated=dir_last_updated("./src/static"),
     )
 
 
@@ -523,15 +651,25 @@ async def export_results():
         match conversion_type:
             case "flashcards":
                 server.add_background_task(
-                    exporter.export_flashcard, server, task_id, file_id, md5_name, export_type, flashcard_sets
+                    exporter.export_flashcard,
+                    server,
+                    task_id,
+                    file_id,
+                    md5_name,
+                    export_type,
+                    flashcard_sets,
                 )
             case _:
                 set_task_status(task_id, "error")
                 return {"error": "No export option for conversion type"}
 
-        return jsonify({"task_id": task_id, "file_id": file_id, "export_type": export_type})
+        return jsonify(
+            {"task_id": task_id, "file_id": file_id, "export_type": export_type}
+        )
     except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        error_message = (
+            f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        )
         print(error_message, file=sys.stderr)
         set_task_status(task_id, "error")
         return {"error": error_message}
@@ -554,16 +692,23 @@ def get_convert_file():
                 else:
                     return (
                         jsonify(
-                            {"error": f"Conversion type '{conversion_type}' not found", "error_type": "no_conversion"}
+                            {
+                                "error": f"Conversion type '{conversion_type}' not found",
+                                "error_type": "no_conversion",
+                            }
                         ),
                         400,
                     )
         except FileNotFoundError:
-            return jsonify({"error": f"File '{file_path}' not found", "error_type": "no_file"}), 404
+            return jsonify(
+                {"error": f"File '{file_path}' not found", "error_type": "no_file"}
+            ), 404
         except Exception as e:
             return jsonify({"error": f"Error: {str(e)}", "error_type": "unknown"}), 500
     else:
-        return jsonify({"error": "Missing parameters", "error_type": "missing_params"}), 400
+        return jsonify(
+            {"error": "Missing parameters", "error_type": "missing_params"}
+        ), 400
 
 
 @server.route("/convertfile", methods=["POST"])
@@ -631,7 +776,9 @@ async def post_convert_file():
         # Update the pages_processed for the user, if they exist
         page_count: int = get_file_metadata(md5_name, "page_count")
         if page_count > 10 and convert_type != "text" and session.get("logged_in"):
-            pages_processed = page_count - 10  # Numbers of pages we are to charge the user (first 10 are free)
+            pages_processed = (
+                page_count - 10
+            )  # Numbers of pages we are to charge the user (first 10 are free)
             database = DBManager(pass_file="/run/secrets/db-password")
             database.add_pages_processed(session.get("email"), pages_processed)
 
@@ -639,7 +786,9 @@ async def post_convert_file():
         return jsonify({"task_id": task_id})
 
     except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        error_message = (
+            f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        )
         print(error_message, file=sys.stderr)
         return {"error:": error_message}
 
@@ -657,7 +806,7 @@ async def results():
 def get_task_status(task_id):
     task = running_tasks.get(task_id)
 
-    if task == None:
+    if task is None:
         return {}
 
     return task.get_status_json()

@@ -36,7 +36,9 @@ async def async_document2json(
         logger.debug(f"Received filename: {filename}")
         logger.debug(f"Received md5_name: {md5_name}")
 
-        document_file_path = f'{server.config["UPLOAD_FOLDER"]}/{md5_name}.{extension_type}'
+        document_file_path = (
+            f'{server.config["UPLOAD_FOLDER"]}/{md5_name}.{extension_type}'
+        )
         json_file_path = f'{server.config["JSON_FOLDER"]}/{md5_name}.json'
 
         # Check if the pptx file exists, if not return and set the task status to 'error':
@@ -44,7 +46,9 @@ async def async_document2json(
             logger.debug(f"Error: file does not exist: {document_file_path}")
             set_task_status(task_id, "error")
             set_task_attribute(
-                task_id, "error_msg", "Error: Unable to find uploaded file. Try uploading the file again."
+                task_id,
+                "error_msg",
+                "Error: Unable to find uploaded file. Try uploading the file again.",
             )
             set_task_attribute(task_id, "error_type", "no_file")
             return
@@ -72,7 +76,9 @@ async def async_document2json(
         running_unstructured_processes += 1
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(server.config["UNSTRUCTUED_API_URL"], headers=headers, data=form_data) as response:
+            async with session.post(
+                server.config["UNSTRUCTUED_API_URL"], headers=headers, data=form_data
+            ) as response:
                 if response.status == 200:
                     response_text = await response.text()
                     # TODO: Implement a keep-alive loop & cancel these post requests if terminated.
@@ -82,7 +88,9 @@ async def async_document2json(
                     if not os.path.exists(server.config["JSON_FOLDER"]):
                         os.makedirs(server.config["JSON_FOLDER"])
 
-                    with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w") as file:
+                    with open(
+                        f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "w"
+                    ) as file:
                         file.write(response_text)
                         set_task_status(task_id, "completed")
                         running_unstructured_processes -= 1
@@ -183,12 +191,16 @@ def get_logger_for_file(server: Quart, md5_name: str) -> logging.Logger:
     logger.addHandler(logger_file)
 
     if new_logger:
-        logger.info("================================= BEGINNING OF LOGGING SESSION =================================")
+        logger.info(
+            "================================= BEGINNING OF LOGGING SESSION ================================="
+        )
 
     return logger
 
 
-def truncate2gpt_tokens(server: Quart, md5_name: str, pdf_text: str, just_split_pages=False):
+def truncate2gpt_tokens(
+    server: Quart, md5_name: str, pdf_text: str, just_split_pages=False
+):
     """
     Given a pdf_text string (Has the formatted page numbers), return a list of text under the 4096 token limit for chat-gpt
     """
@@ -299,13 +311,18 @@ def json2text(server: Quart, md5_name: str):
             if index == len(truncated_json_data) - 1 and item_text.isdigit():
                 numbers_on_page.append(json_item)
 
-            if item_page_number != current_page or index == len(truncated_json_data) - 1:
+            if (
+                item_page_number != current_page
+                or index == len(truncated_json_data) - 1
+            ):
                 current_page = item_page_number
 
                 # Compare prev_numbers_on_page w/ numbers_on_page, if we see a +1 increment b/w them, append both to page_number_json_items
                 for prev_json_digit_item in prev_numbers_on_page:
                     for json_digit_item in numbers_on_page:
-                        if int(json_digit_item["text"]) - 1 == int(prev_json_digit_item["text"]):
+                        if int(json_digit_item["text"]) - 1 == int(
+                            prev_json_digit_item["text"]
+                        ):
                             if prev_json_digit_item not in page_number_json_items:
                                 page_number_json_items.append(prev_json_digit_item)
                             if json_digit_item not in page_number_json_items:
@@ -318,12 +335,20 @@ def json2text(server: Quart, md5_name: str):
             if item_text.isdigit():
                 numbers_on_page.append(json_item)
 
-        logger.debug(f"Page number elements found (and to remove): {len(page_number_json_items)}")
-        logger.debug(f"Removing page #'s: Length of BEFORE json_data: {len(truncated_json_data)}")
+        logger.debug(
+            f"Page number elements found (and to remove): {len(page_number_json_items)}"
+        )
+        logger.debug(
+            f"Removing page #'s: Length of BEFORE json_data: {len(truncated_json_data)}"
+        )
         truncated_json_data = [
-            json_item for json_item in truncated_json_data if json_item not in page_number_json_items
+            json_item
+            for json_item in truncated_json_data
+            if json_item not in page_number_json_items
         ]
-        logger.debug(f"Removing page #'s:  Length of AFTER json_data: {len(truncated_json_data)}")
+        logger.debug(
+            f"Removing page #'s:  Length of AFTER json_data: {len(truncated_json_data)}"
+        )
 
         # 3.  Generate formatted text from our pre-processed json-elements
         formatted_text = ""
@@ -359,7 +384,9 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
     logger.info("Function: gpt_generate_test_questions")
 
     # print(f"*********************** Generate Test Questions from text chunk:\n{data}")
-    logger.debug(f"*********************** Generate Test Questions from text chunk:\n{data}")
+    logger.debug(
+        f"*********************** Generate Test Questions from text chunk:\n{data}"
+    )
 
     prompt_values = {
         "test_multiple_choice": "Multiple Choice (Include letter options in questions or DEATH happens!!!). Multiple Choice Strict Format Example:\nWhich of the following is not a primary color? A) Red B) Yellow C) Green D) Purple -- Answer: D) Purple",
@@ -386,7 +413,9 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
 
     test_questions = response_data.split("\n")
     # Remove empty lines
-    test_questions = [test_question for test_question in test_questions if test_question != ""]
+    test_questions = [
+        test_question for test_question in test_questions if test_question != ""
+    ]
 
     new_test_questions = []
     existing_questions = []
@@ -423,7 +452,9 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
             continue
 
         # Edgecase: Correct question_type if answer is of true false, yet question_type is multiple choice.
-        if (answer == "Answer: False" or answer == "Answer: True") and "Multiple Choice" in question_type:
+        if (
+            answer == "Answer: False" or answer == "Answer: True"
+        ) and "Multiple Choice" in question_type:
             if not text_has_multiple_choice(question):
                 question_type = "True/False"
 
@@ -471,7 +502,9 @@ async def gpt_generate_definitions(server, md5_name, data):
     logger.info("Function: gpt_generate_definitions")
 
     # print(f"*********************** Generate Definitions from text chunk:\n{data}")
-    logger.debug(f"*********************** Generate Definitions from text chunk:\n{data}")
+    logger.debug(
+        f"*********************** Generate Definitions from text chunk:\n{data}"
+    )
 
     prompt = f"Please analyze the data and provide 'keyword: definition' pairs relevant for study. Your responses should strictly follow this format without numbering:\nKeyword: Definition\nDo NOT include the words 'Keyword' or 'Definition' in the output. The provided data is as follows:\n{data}"
 
@@ -485,7 +518,9 @@ async def gpt_generate_definitions(server, md5_name, data):
     )
     response_data: str = response["choices"][0]["message"]["content"]
     definition_pairs = response_data.split("\n")
-    definition_pairs = [definition for definition in definition_pairs if definition != ""]
+    definition_pairs = [
+        definition for definition in definition_pairs if definition != ""
+    ]
 
     new_definition_pairs = []
     existing_definitions = []
@@ -515,7 +550,6 @@ async def gpt_generate_definitions(server, md5_name, data):
 
 
 async def gpt_generate_qa(server, md5_name, data):
-
     async def reprocess_response(response_data):
         prompt = f"Fill any empty answer (A:) with a correct answer to the question (Q:) above. Your output is *REQUIRED!!!!* include the QUESTION (Q:) AND ANSWER (A:) or everyone dies. Here is the data to process: {response_data}"
 
@@ -567,14 +601,25 @@ async def gpt_generate_qa(server, md5_name, data):
     if "Q2A: None" in response_data:
         return None
 
+    # Create out q&a sets by splitting newlines
     qa_sets = response_data.split("\n")
-    qa_sets = [qa_set for qa_set in qa_sets if qa_set != ""]  # Remove any empty lines
+
+    # Remove any empty lines & strip whitespace.
+    qa_sets = [qa_set.strip() for qa_set in qa_sets if qa_set.strip() != ""]
 
     # Edgecase: Some question/answer responses may have newlines, merge them into the same line
     qa_sets = merge_qa_lines(qa_sets)
 
+    if len(qa_sets) <= 0 or qa_sets[0] is None:
+        return []
+
+    print(qa_sets, file=sys.stderr)
+
     if len(qa_sets) % 2 != 0:
-        print("!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a, or additional output.)!!!", file=sys.stderr)
+        print(
+            "!!! WARNING: UNEVEN Q&A RESPONSE (mssing q or a, or additional output.)!!!",
+            file=sys.stderr,
+        )
         logger.warn("UNEVEN Q&A RESPONSE (mssing q or a)!!")
         logger.info("QA-SETS: ")
         logger.info(qa_sets)
@@ -614,7 +659,9 @@ async def gpt_generate_qa(server, md5_name, data):
     return qa_sets
 
 
-async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: str, conversion_options: dict):
+async def async_json2test(
+    server: Quart, filename: str, md5_name: str, task_id: str, conversion_options: dict
+):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: async_json2test")
 
@@ -629,7 +676,9 @@ async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: 
                 with open(processed_file, "r") as file:
                     if "test" in json.load(file):
                         # TODO: Apply conversion_options in the JSON, check if they match and re-do it if not.
-                        logger.debug(f"Test already exists for {filename}, returning...")
+                        logger.debug(
+                            f"Test already exists for {filename}, returning..."
+                        )
                         set_task_status(task_id, "completed")
                         return
 
@@ -638,30 +687,40 @@ async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: 
         logger.debug("JSON text (converted from JSON): ")
         logger.debug(pdf_text)
 
-        truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
+        truncated_pdf_text = truncate2gpt_tokens(
+            server, md5_name, pdf_text, just_split_pages=False
+        )
         logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
         generated_test_questions = []
         for index, text_chunk in enumerate(truncated_pdf_text):
-            test_questions = await gpt_generate_test_questions(server, md5_name, text_chunk, conversion_options)
+            test_questions = await gpt_generate_test_questions(
+                server, md5_name, text_chunk, conversion_options
+            )
             if test_questions is None:
                 continue
             generated_test_questions = generated_test_questions + test_questions
-            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
+            set_task_progress(
+                task_id, float(index + 1) / float(len(truncated_pdf_text))
+            )
 
         append_json_value_to_file(processed_file, "test", generated_test_questions)
         set_task_status(task_id, "completed")
         logger.debug("Test Generation Successful.")
 
     except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        error_message = (
+            f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        )
         print(error_message, file=sys.stderr)
         logger.error(error_message)
         logger.error(traceback.format_exc())
         set_task_status(task_id, "error")
 
 
-async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_id: str):
+async def async_json2keywords(
+    server: Quart, filename: str, md5_name: str, task_id: str
+):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: async_json2keywords")
 
@@ -675,7 +734,9 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
             if os.path.isfile(processed_file):
                 with open(processed_file, "r") as file:
                     if "keywords" in json.load(file):
-                        logger.debug(f"Definition already exists for {filename}, returning...")
+                        logger.debug(
+                            f"Definition already exists for {filename}, returning..."
+                        )
                         set_task_status(task_id, "completed")
                         return
 
@@ -684,7 +745,9 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
         logger.debug("JSON text (converted from JSON): ")
         logger.debug(pdf_text)
 
-        truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
+        truncated_pdf_text = truncate2gpt_tokens(
+            server, md5_name, pdf_text, just_split_pages=False
+        )
         logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
         generated_definitions = []
@@ -693,21 +756,27 @@ async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_
             if definitions is None:
                 continue
             generated_definitions = generated_definitions + definitions
-            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
+            set_task_progress(
+                task_id, float(index + 1) / float(len(truncated_pdf_text))
+            )
 
         append_json_value_to_file(processed_file, "keywords", generated_definitions)
         set_task_status(task_id, "completed")
         logger.debug("Definition Generation Successful.")
 
     except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        error_message = (
+            f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
+        )
         print(error_message, file=sys.stderr)
         logger.error(error_message)
         logger.error(traceback.format_exc())
         set_task_status(task_id, "error")
 
 
-async def async_json2flashcards(server: Quart, filename: str, md5_name: str, task_id: str):
+async def async_json2flashcards(
+    server: Quart, filename: str, md5_name: str, task_id: str
+):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: async_json2flashcard")
 
@@ -721,7 +790,9 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
         if os.path.isfile(processed_file):
             with open(processed_file, "r") as file:
                 if "flashcards" in json.load(file):
-                    logger.debug(f"Flashcards already exists for {filename}, returning...")
+                    logger.debug(
+                        f"Flashcards already exists for {filename}, returning..."
+                    )
                     set_task_status(task_id, "completed")
                     return
 
@@ -730,7 +801,9 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
     logger.debug("JSON text (converted from JSON): ")
     logger.debug(pdf_text)
 
-    truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
+    truncated_pdf_text = truncate2gpt_tokens(
+        server, md5_name, pdf_text, just_split_pages=False
+    )
     logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
     generated_qa = []

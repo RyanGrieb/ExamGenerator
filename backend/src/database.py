@@ -1,4 +1,5 @@
 import mysql.connector
+from mysql.connector.connection import MySQLConnection, MySQLCursor
 import sys
 import os
 import hashlib
@@ -19,7 +20,7 @@ class DBUser:
 class DBManager:
     def __init__(self, database="user", host="db", user="root", pass_file=None):
         password_file = open(pass_file, "r")
-        self.connection = mysql.connector.connect(
+        self.connection: MySQLConnection = mysql.connector.connect(
             user=user,
             password=password_file.read(),
             host=host,  # name of the mysql service as set in the docker compose file
@@ -27,14 +28,22 @@ class DBManager:
             auth_plugin="mysql_native_password",
         )
         password_file.close()
-        self.cursor = self.connection.cursor(buffered=True)
+        self.cursor: MySQLCursor = self.connection.cursor(buffered=True)
 
     def run_query(self, query: str):
         self.cursor.execute(query)
         self.connection.commit()
         return self.cursor.fetchone()
 
-    def assign_user_subscriptions(self, user_id: str, subscription_id: str, subscription_item_id: str):
+    def get_user_subscription_id(self, user_id):
+        query = "SELECT subscription_id FROM stripe_users WHERE user_id = %s"
+        self.cursor.execute(query, (user_id,))
+        subscription_id = self.cursor.fetchone()
+        return subscription_id[0] if subscription_id else None
+
+    def assign_user_subscriptions(
+        self, user_id: str, subscription_id: str, subscription_item_id: str
+    ):
         query = "UPDATE stripe_users SET subscription_id = %s, subscription_item_id = %s WHERE user_id = %s"
         values = (subscription_id, subscription_item_id, user_id)
         self.cursor.execute(query, values)
@@ -85,7 +94,9 @@ class DBManager:
             # Generate a salt
             salt = os.urandom(16)
             # Hash the password with the salt
-            hashed_password_bytes = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
+            hashed_password_bytes = hashlib.pbkdf2_hmac(
+                "sha256", password.encode("utf-8"), salt, 100000
+            )
 
             query = "INSERT INTO users (email, password, salt, card_connected) VALUES (%s, %s, %s, false)"
             data = (email, hashed_password_bytes.hex(), salt)

@@ -1,8 +1,12 @@
-* ASAP *
-- Handle exception when we try to export 0 flashcards
+* ASAP BEFORE ADVERTISTING*
+- Don't display -9, -5 if the PDF has less than 10 pages for paid users.
+- For free, guest accounts have it such that they can upload files with >3 >10 pages, but we will only process 3/10 pages.
+    Instead of just denying the upload.
+- Don't re-charge user if they reload the page when processing documents. Charge when complete.
 - Test payments on production
 - Create admin account to test on production
 - Google adsense
+- setup support email (pdf2flashcards@gmail.com would work for now.)
 - Google ad compaign: Hire some dude off fiverr and make the following images
     image: Minimum size: 600 x 314 pixels. Recommended size: 1200 x 628 pixels. Max size: 4096 x 4096 pixels.
     logo: Minimum size: 128 x 128 pixels. Recommended size: 1200 x 1200 pixels. Max size: 4096 x 4096 pixels.
@@ -10,10 +14,8 @@
 *** Improve output via. re-processing ***
     Have GPT re-process these
 - Handle edgecases where question or answer output is about XXX characters
-
-
-* ??? - Need to reproduce *
-0. Edgecase: Remove '-' at beginning of keyword for keyword/definition generation
+    * ??? - Need to reproduce *
+    0. Edgecase: Remove '-' at beginning of keyword for keyword/definition generation
 
 
 * DECEMBER * (Improve output, Export features, User Accounts)
