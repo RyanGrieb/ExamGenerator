@@ -134,6 +134,7 @@ def export_flashcard_as_pdf(server: Quart, file_id: str, md5_name: str, flashcar
             y_offset = PAGE_HEIGHT - i * section_height
 
         # print(f"y offset: {y_offset}", file=sys.stderr)
+        print(f"export set {set}", file=sys.stderr)
         question = set[0]
         answers = set[1:]
 
@@ -189,7 +190,7 @@ def get_flashcard_sets(server: Quart, md5_name: str, flashcard_sets: list[int]) 
     """
     qa_sets = []
     with open(f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json', "r") as file:
-        flashcard_sets_json = json.load(file)["flashcards"]
+        flashcard_sets_json = json.load(file)["flashcards"]["data"]
         qa_sets = [
             flashcard_set_json
             for index, flashcard_set_json in enumerate(flashcard_sets_json)
