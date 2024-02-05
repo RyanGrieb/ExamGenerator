@@ -82,6 +82,14 @@ stripe.api_key = stripe_keys["private"]
 openai.api_key = OPENAI_API_KEY
 
 
+def get_user_page_limit():
+    if not session.get("logged_in"):
+        return 3
+    if not session.get("card_connected"):
+        return 10
+    return -1
+
+
 # TODO: move to file_utils
 def dir_last_updated(folder):
     return str(
@@ -639,6 +647,7 @@ def get_convert_file():
     filename = request.args.get("filename")
     md5_name = request.args.get("md5_name")
     conversion_type = request.args.get("conversion_type")
+    user_page_limit = get_user_page_limit()
     print(f"Convertfile GET - Get {conversion_type} of {filename}", file=sys.stderr)
 
     if filename and md5_name and conversion_type:
@@ -648,22 +657,21 @@ def get_convert_file():
                 data = json.load(file)
 
                 if conversion_type in data:
-                    # Check if the document needs to be re-processed (converted by a free user, but paid user wants it)
-                    if session.get("card_connected"):
-                        pages_processed = data[conversion_type]["pages_processed"]
-                        total_pages = file_utils.get_file_metadata(server, md5_name, "page_count")
-                        if pages_processed < total_pages:
-                            # Delete the old conversion_type form our page
-                            file_utils.remove_json_value(file_path, conversion_type)
-                            return (
-                                jsonify(
-                                    {
-                                        "error": f"Conversion type '{conversion_type}' not found",
-                                        "error_type": "no_conversion",
-                                    }
-                                ),
-                                400,
-                            )
+                    pages_processed = data[conversion_type]["pages_processed"]
+                    total_pages = file_utils.get_file_metadata(server, md5_name, "page_count")
+                    if total_pages > pages_processed and (user_page_limit == -1 or user_page_limit > pages_processed):
+                        # Check if the document needs to be re-processed (converted by a free/guest user, but higher lvl user wants it)
+                        # Delete the old conversion_type form our page
+                        file_utils.remove_json_value(file_path, conversion_type)
+                        return (
+                            jsonify(
+                                {
+                                    "error": f"Conversion type '{conversion_type}' not found",
+                                    "error_type": "no_conversion",
+                                }
+                            ),
+                            400,
+                        )
                     # If document doesn't need to be re-processed, and we found the conversion_type. Send the data.
                     return data[conversion_type]["data"]
                 else:
