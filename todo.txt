@@ -1,8 +1,7 @@
 * ASAP BEFORE ADVERTISTING*
-- Don't display -9, -5 if the PDF has less than 10 pages for paid users.
-- For free, guest accounts have it such that they can upload files with >3 >10 pages, but we will only process 3/10 pages.
-    Instead of just denying the upload.
-- Don't re-charge user if they reload the page when processing documents. Charge when complete.
+- Limit guest/free accounts to 1 upload each.
+- Close DB connections after use
+- Rewrite GPT API interactions. Send a chat containing our data EACH PAGE? Have the conversations continue instead of starting new ones?
 - Test payments on production
 - Create admin account to test on production
 - Google adsense

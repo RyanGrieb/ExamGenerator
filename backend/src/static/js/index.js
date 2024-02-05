@@ -363,6 +363,13 @@ async function convert_files() {
       throw new Error("Network response was not ok");
     }
 
+    const cost = paid_page_count * 0.02;
+    if (cost < 0) {
+      UploadedFile.save_all_to_cookie();
+      window.location.href = "/results";
+      return;
+    }
+
     const prompt_html = await response.text();
     const prompt_container = document.createElement("div");
 
@@ -370,7 +377,17 @@ async function convert_files() {
     document.body.appendChild(prompt_container);
 
     const prompt_message = document.querySelector(".prompt-message");
-    prompt_message.innerHTML = `This conversion will use ${paid_page_count} pages, costing $${paid_page_count * 0.02}`;
+    if (!card_connected) {
+      if (logged_in) {
+        prompt_message.innerHTML =
+          "You are limited to 10 pages for this conversion. <a href='/add-payment'>Add a payment</a> for more.";
+      } else {
+        prompt_message.innerHTML =
+          "You are limited to 3 pages for this conversion. <a href='/register'>Sign up</a> for more.";
+      }
+    } else {
+      prompt_message.innerHTML = `This conversion will use ${paid_page_count} pages, costing $${cost}`;
+    }
 
     const prompt_confirm_btn = document.querySelector(".prompt-confirm-btn");
     const prompt_cancel_btn = document.querySelector(".prompt-cancel-btn");

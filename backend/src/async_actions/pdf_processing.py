@@ -11,6 +11,7 @@ from werkzeug.datastructures import FileStorage
 import pypdf
 
 
+# FIXME: Just move this into document_processing
 def get_pages(file: FileStorage):
     pdf_reader = pypdf.PdfReader(file)
     return len(pdf_reader.pages)

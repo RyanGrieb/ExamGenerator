@@ -667,12 +667,13 @@ input[type="submit"] {
 .prompt-box {
   background-color: var(--gradient-3);
   width: 300px;
-  height: 150px;
+  height: 180px;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
   border: 6px double var(--gradient-4);
 }
+
 .prompt-buttons {
   display: flex;
   justify-content: center;
@@ -680,6 +681,10 @@ input[type="submit"] {
 
 .prompt-buttons * {
   margin: 10px;
+}
+
+.prompt-container a {
+  color: var(--gradient-5);
 }
 
 .results-options {

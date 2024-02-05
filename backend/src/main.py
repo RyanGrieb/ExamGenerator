@@ -5,9 +5,10 @@ import hashlib
 import uuid
 import json
 import stripe
+from . import file_utils
 from .async_actions import exporter
 from .async_actions import document_processing, pdf_processing, pptx_processing
-from .async_actions.async_task import set_task_status, set_task_attribute, running_tasks
+from .async_actions.async_task import set_task_status, set_task_attribute, running_tasks, on_task_status
 from quart import (
     Quart,
     Request,
@@ -38,9 +39,7 @@ LOG_FOLDER = "./data/file-log"
 METADATA_FOLDER = "./data/file-metadata"
 EXPORT_FOLDER = "./data/exports"
 ALLOWED_EXTENSIONS = {"pdf", "pptx"}
-CONCURRENT_TEXT_PROCESS_LIMIT = (
-    2  # How many files unstructured API can handle at a time.
-)
+CONCURRENT_TEXT_PROCESS_LIMIT = 2  # How many files unstructured API can handle at a time.
 SUPPORT_EMAIL = "???@???.com"
 
 
@@ -83,16 +82,14 @@ stripe.api_key = stripe_keys["private"]
 openai.api_key = OPENAI_API_KEY
 
 
+# TODO: move to file_utils
 def dir_last_updated(folder):
     return str(
-        max(
-            os.path.getmtime(os.path.join(root_path, f))
-            for root_path, _, files in os.walk(folder)
-            for f in files
-        )
+        max(os.path.getmtime(os.path.join(root_path, f)) for root_path, _, files in os.walk(folder) for f in files)
     )
 
 
+# TODO: move to file_utils
 def get_file_extension(filename: str):
     return filename.rsplit(".", 1)[-1].lower()
 
@@ -112,22 +109,8 @@ def get_acount_type() -> str:
     return "guest"
 
 
-def get_file_metadata(md5_name, key):
-    metadata_folder = server.config["METADATA_FOLDER"]
-
-    metadata_file_path = os.path.join(metadata_folder, f"{md5_name}.json")
-
-    if os.path.exists(metadata_file_path):
-        with open(metadata_file_path, "r") as metadata_file:
-            metadata = json.load(metadata_file)
-            return metadata.get(key, None)
-    else:
-        return None
-
-
 # Returns the invoice amount and due date.
 def get_customer_invoice():
-    print(f"{session.get('card_connected')} !!!!!!!!!!!!!!!", file=sys.stderr)
     if not session.get("card_connected"):
         return (None, None)
 
@@ -137,9 +120,7 @@ def get_customer_invoice():
     # response = database.run_query(f"SELECT subscription_item_id FROM stripe_users WHERE user_id = '{customer_id}'")
     # subscription_item_id = response[0]
 
-    response = database.run_query(
-        f"SELECT subscription_id FROM stripe_users WHERE user_id = '{customer_id}'"
-    )
+    response = database.run_query(f"SELECT subscription_id FROM stripe_users WHERE user_id = '{customer_id}'")
     subscription_id = response[0]
 
     if not subscription_id:
@@ -157,7 +138,6 @@ def get_customer_invoice():
     # Format the next charge date
     next_charge_date_str = next_charge_date.strftime("%m/%d/%Y")
 
-    print(upcoming_invoice, file=sys.stderr)
     return (next_charge_date_str, upcoming_invoice.amount_due)
 
 
@@ -181,6 +161,7 @@ async def upload_file(request: Request):
         return jsonify({"success": False, "error_type": "file_denied"})
 
     file_extension = get_file_extension(file.filename)
+
     number_of_pages = -1
     match file_extension:
         case "pdf":
@@ -191,12 +172,16 @@ async def upload_file(request: Request):
             None
 
     print(f"Extension: {file_extension}", file=sys.stderr)
+
+    """
     account_type = get_acount_type()
+
 
     if number_of_pages > 3 and account_type == "guest":
         return jsonify({"success": False, "error_type": "page_limit"})
     if number_of_pages > 10 and account_type == "free":
         return jsonify({"success": False, "error_type": "page_limit"})
+    """
 
     print(
         "User uploaded document: {}".format(file.filename),
@@ -226,9 +211,7 @@ async def upload_file(request: Request):
         "extension_type": file_extension,
     }
 
-    metadata_file_path = os.path.join(
-        server.config["METADATA_FOLDER"], f"{md5_name}.json"
-    )
+    metadata_file_path = os.path.join(server.config["METADATA_FOLDER"], f"{md5_name}.json")
     with open(metadata_file_path, "w") as metadata_file:
         json.dump(metadata, metadata_file)
 
@@ -249,9 +232,7 @@ async def home():
     if request.method == "POST":
         return await upload_file(request)
 
-    return await render_template(
-        "index.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("index.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.route("/pdf2json-processes", methods=["GET"])
@@ -293,9 +274,7 @@ async def register():
 
         return redirect(url_for("login"))
 
-    return await render_template(
-        "register.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("register.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.route("/login", methods=["GET", "POST"])
@@ -329,9 +308,7 @@ async def login():
                 last_updated=dir_last_updated("./src/static"),
                 error_msg=error_msg,
             )
-    return await render_template(
-        "login.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("login.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.route("/logout", methods=["POST"])
@@ -380,9 +357,7 @@ async def handle_checkout_session():
     # Create/fetch stripe customer
     stripe_user_id = database.get_stripe_user_id(session.get("email"))
     if not stripe_user_id:
-        customer = stripe.Customer.create(
-            email=session.get("email"), description="From PDF2Flashcards backend"
-        )
+        customer = stripe.Customer.create(email=session.get("email"), description="From PDF2Flashcards backend")
         database.add_stripe_customer(customer)
         stripe_user_id = customer.id
     else:
@@ -433,9 +408,7 @@ async def handle_checkout_session():
         subscription_item_id = subscription["items"]["data"][0]["id"]
 
         # Assign the subscription_id and subscription_item_id to our stripe_users table
-        database.assign_user_subscriptions(
-            stripe_user_id, subscription.id, subscription_item_id
-        )
+        database.assign_user_subscriptions(stripe_user_id, subscription.id, subscription_item_id)
 
     # Update users table & set card_connected to True
     database.set_card_connected(session.get("email"), True)
@@ -477,7 +450,7 @@ async def remove_payment():
 
     # Charge the stripe customer if they have a balance > 0.5
     _, amount = get_customer_invoice()
-    print(f"Amount: {amount}")
+    # print(f"Amount: {amount}")
     if amount >= 50:
         intent = stripe.PaymentIntent.create(
             amount=amount,
@@ -487,9 +460,7 @@ async def remove_payment():
         )
         return_url = request.url_root + "/profile"
         # Confirm the payment intent
-        payment_result = stripe.PaymentIntent.confirm(
-            intent["id"], return_url=return_url
-        )
+        payment_result = stripe.PaymentIntent.confirm(intent["id"], return_url=return_url)
         print(payment_result, file=sys.stderr)
 
     # Cancel the subscription & detach the card from the customer.
@@ -497,9 +468,7 @@ async def remove_payment():
     stripe.PaymentMethod.detach(payment_id)
 
     # Set our card connected to false.
-    database.run_query(
-        f"UPDATE users SET card_connected = 0 WHERE email='{session.get('email')}'"
-    )
+    database.run_query(f"UPDATE users SET card_connected = 0 WHERE email='{session.get('email')}'")
     session["card_connected"] = False
 
     return jsonify({"success": True, "return_url": return_url})
@@ -542,23 +511,17 @@ async def help():
 
 @server.route("/flashcard_test", methods=["GET"])
 async def flashcard_test():
-    return await render_template(
-        "flashcard_test.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("flashcard_test.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.route("/flashcard", methods=["GET"])
 async def flashcard():
-    return await render_template(
-        "flashcard.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("flashcard.html", last_updated=dir_last_updated("./src/static"))
 
 
 @server.route("/prompt", methods=["GET"])
 async def prompt():
-    return await render_template(
-        "prompt.html", last_updated=dir_last_updated("./src/static")
-    )
+    return await render_template("prompt.html", last_updated=dir_last_updated("./src/static"))
 
 
 # Get the Q&A set of the associated file.
@@ -663,13 +626,9 @@ async def export_results():
                 set_task_status(task_id, "error")
                 return {"error": "No export option for conversion type"}
 
-        return jsonify(
-            {"task_id": task_id, "file_id": file_id, "export_type": export_type}
-        )
+        return jsonify({"task_id": task_id, "file_id": file_id, "export_type": export_type})
     except Exception as e:
-        error_message = (
-            f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
-        )
+        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
         print(error_message, file=sys.stderr)
         set_task_status(task_id, "error")
         return {"error": error_message}
@@ -687,8 +646,26 @@ def get_convert_file():
         try:
             with open(file_path, "r") as file:
                 data = json.load(file)
+
                 if conversion_type in data:
-                    return data[conversion_type]
+                    # Check if the document needs to be re-processed (converted by a free user, but paid user wants it)
+                    if session.get("card_connected"):
+                        pages_processed = data[conversion_type]["pages_processed"]
+                        total_pages = file_utils.get_file_metadata(server, md5_name, "page_count")
+                        if pages_processed < total_pages:
+                            # Delete the old conversion_type form our page
+                            file_utils.remove_json_value(file_path, conversion_type)
+                            return (
+                                jsonify(
+                                    {
+                                        "error": f"Conversion type '{conversion_type}' not found",
+                                        "error_type": "no_conversion",
+                                    }
+                                ),
+                                400,
+                            )
+                    # If document doesn't need to be re-processed, and we found the conversion_type. Send the data.
+                    return data[conversion_type]["data"]
                 else:
                     return (
                         jsonify(
@@ -700,15 +677,11 @@ def get_convert_file():
                         400,
                     )
         except FileNotFoundError:
-            return jsonify(
-                {"error": f"File '{file_path}' not found", "error_type": "no_file"}
-            ), 404
+            return jsonify({"error": f"File '{file_path}' not found", "error_type": "no_file"}), 404
         except Exception as e:
             return jsonify({"error": f"Error: {str(e)}", "error_type": "unknown"}), 500
     else:
-        return jsonify(
-            {"error": "Missing parameters", "error_type": "missing_params"}
-        ), 400
+        return jsonify({"error": "Missing parameters", "error_type": "missing_params"}), 400
 
 
 @server.route("/convertfile", methods=["POST"])
@@ -728,10 +701,32 @@ async def post_convert_file():
         set_task_attribute(task_id, "md5_name", md5_name)
         set_task_attribute(task_id, "convert_type", convert_type)
 
+        # Limit the number of pages during conversion for free/ guest users
+        page_limit = -1  # -1 Is default for paid users.
+        if session.get("logged_in"):
+            if not session.get("card_connected"):
+                page_limit = 10
+        else:
+            page_limit = 3
+
+        # Update the pages_processed for the user, if they exist once the task has completed successfuly
+        # This doesn't apply to the text conversion
+        def on_conversion_task_completed():
+            print("NOW WE FREAKING CHARGE U!!!!!!!!1", file=sys.stderr)
+            page_count: int = file_utils.get_file_metadata(server, md5_name, "page_count")
+            if page_count > 10 and convert_type != "text" and session.get("card_connected"):
+                pages_processed = page_count - 10  # Numbers of pages we are to charge the user (first 10 are free)
+                database = DBManager(pass_file="/run/secrets/db-password")
+                database.add_pages_processed(session.get("email"), pages_processed)
+
+        if convert_type != "text":
+            set_task_attribute(task_id, "page_limit", page_limit)
+            on_task_status("completed", task_id, on_conversion_task_completed)
+
         print(f"*** Converting {filename} to {convert_type} ***", file=sys.stderr)
 
         # FIXME: Get extension_type from md5 metadata
-        extension_type: str = get_file_metadata(md5_name, "extension_type")
+        extension_type: str = file_utils.get_file_metadata(server, md5_name, "extension_type")
 
         match convert_type:
             case "text":
@@ -773,22 +768,11 @@ async def post_convert_file():
                 set_task_status(task_id, "error")
                 return {"error:": "No convert_type found."}
 
-        # Update the pages_processed for the user, if they exist
-        page_count: int = get_file_metadata(md5_name, "page_count")
-        if page_count > 10 and convert_type != "text" and session.get("logged_in"):
-            pages_processed = (
-                page_count - 10
-            )  # Numbers of pages we are to charge the user (first 10 are free)
-            database = DBManager(pass_file="/run/secrets/db-password")
-            database.add_pages_processed(session.get("email"), pages_processed)
-
         # Return the task ID to the client
         return jsonify({"task_id": task_id})
 
     except Exception as e:
-        error_message = (
-            f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
-        )
+        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
         print(error_message, file=sys.stderr)
         return {"error:": error_message}
 
