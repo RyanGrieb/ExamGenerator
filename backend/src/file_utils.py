@@ -1,4 +1,3 @@
-from io import TextIOWrapper
 import os
 import json
 from quart import Quart
@@ -12,7 +11,7 @@ def remove_json_value(file_path, key):
             if key in data:
                 del data[key]
                 file.seek(0)
-                json.dump(data, file, indent=4)
+                json.dump(data, file)
                 file.truncate()
             else:
                 print(f"Key '{key}' not found in JSON.", file=sys.stderr)
@@ -55,3 +54,13 @@ def get_file_metadata(server: Quart, md5_name, key):
             return metadata.get(key, None)
     else:
         return None
+
+
+def dir_last_updated(folder):
+    return str(
+        max(os.path.getmtime(os.path.join(root_path, f)) for root_path, _, files in os.walk(folder) for f in files)
+    )
+
+
+def get_file_extension(filename: str):
+    return filename.rsplit(".", 1)[-1].lower()

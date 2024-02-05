@@ -7,7 +7,7 @@ import json
 import stripe
 from . import file_utils
 from .async_actions import exporter
-from .async_actions import document_processing, pdf_processing, pptx_processing
+from .async_actions import document_processing
 from .async_actions.async_task import set_task_status, set_task_attribute, running_tasks, on_task_status
 from quart import (
     Quart,
@@ -90,20 +90,8 @@ def get_user_page_limit():
     return -1
 
 
-# TODO: move to file_utils
-def dir_last_updated(folder):
-    return str(
-        max(os.path.getmtime(os.path.join(root_path, f)) for root_path, _, files in os.walk(folder) for f in files)
-    )
-
-
-# TODO: move to file_utils
-def get_file_extension(filename: str):
-    return filename.rsplit(".", 1)[-1].lower()
-
-
 def allowed_file(filename: str):
-    return "." in filename and get_file_extension(filename) in ALLOWED_EXTENSIONS
+    return "." in filename and file_utils.get_file_extension(filename) in ALLOWED_EXTENSIONS
 
 
 # Returns account type (guest, free, paid)
@@ -146,6 +134,7 @@ def get_customer_invoice():
     # Format the next charge date
     next_charge_date_str = next_charge_date.strftime("%m/%d/%Y")
 
+    database.close_connections()
     return (next_charge_date_str, upcoming_invoice.amount_due)
 
 
@@ -168,14 +157,14 @@ async def upload_file(request: Request):
     if not file or not allowed_file(file.filename):
         return jsonify({"success": False, "error_type": "file_denied"})
 
-    file_extension = get_file_extension(file.filename)
+    file_extension = file_utils.get_file_extension(file.filename)
 
     number_of_pages = -1
     match file_extension:
         case "pdf":
-            number_of_pages = pdf_processing.get_pages(file)
+            number_of_pages = document_processing.get_pdf_pages(file)
         case "pptx":
-            number_of_pages = pptx_processing.get_pages(file)
+            number_of_pages = document_processing.get_pptx_pages(file)
         case _:
             None
 
@@ -240,12 +229,7 @@ async def home():
     if request.method == "POST":
         return await upload_file(request)
 
-    return await render_template("index.html", last_updated=dir_last_updated("./src/static"))
-
-
-@server.route("/pdf2json-processes", methods=["GET"])
-async def get_pdf2json_processes():
-    return {"processes": pdf_processing.pdf2json_processes}
+    return await render_template("index.html", last_updated=file_utils.dir_last_updated("./src/static"))
 
 
 # @server.errorhandler(404)
@@ -266,23 +250,25 @@ async def register():
         if password != confirm_password:
             return await render_template(
                 "register.html",
-                last_updated=dir_last_updated("./src/static"),
+                last_updated=file_utils.dir_last_updated("./src/static"),
                 error_msg="Passwords do not match",
             )
 
         database = DBManager(pass_file="/run/secrets/db-password")
         response, error_msg = database.add_user(email, password)
 
+        database.close_connections()
+
         if response != 0:
             return await render_template(
                 "register.html",
-                last_updated=dir_last_updated("./src/static"),
+                last_updated=file_utils.dir_last_updated("./src/static"),
                 error_msg=error_msg,
             )
 
         return redirect(url_for("login"))
 
-    return await render_template("register.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template("register.html", last_updated=file_utils.dir_last_updated("./src/static"))
 
 
 @server.route("/login", methods=["GET", "POST"])
@@ -301,6 +287,7 @@ async def login():
         database = DBManager(pass_file="/run/secrets/db-password")
         db_user_obj, error_msg = database.get_user(email, password)
         # print(db_user_obj, file=sys.stderr)
+        database.close_connections()
 
         if db_user_obj:
             print(db_user_obj, file=sys.stderr)
@@ -313,10 +300,10 @@ async def login():
             # User doesn't exist or password is incorrect
             return await render_template(
                 "login.html",
-                last_updated=dir_last_updated("./src/static"),
+                last_updated=file_utils.dir_last_updated("./src/static"),
                 error_msg=error_msg,
             )
-    return await render_template("login.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template("login.html", last_updated=file_utils.dir_last_updated("./src/static"))
 
 
 @server.route("/logout", methods=["POST"])
@@ -340,7 +327,7 @@ async def profile():
 
     return await render_template(
         "profile.html",
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
         charge_date=charge_date,
         amount=amount,
     )
@@ -422,6 +409,8 @@ async def handle_checkout_session():
     database.set_card_connected(session.get("email"), True)
     session["card_connected"] = True
 
+    database.close_connections()
+
     # Go back to user profile
     return redirect(url_for("profile"))
 
@@ -444,7 +433,7 @@ async def create_checkout_session():
 async def add_payment():
     return await render_template(
         "add-payment.html",
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
         stripe_pk=stripe_keys["public"],
     )
 
@@ -478,6 +467,7 @@ async def remove_payment():
     # Set our card connected to false.
     database.run_query(f"UPDATE users SET card_connected = 0 WHERE email='{session.get('email')}'")
     session["card_connected"] = False
+    database.close_connections()
 
     return jsonify({"success": True, "return_url": return_url})
 
@@ -487,6 +477,8 @@ async def manage_payment():
     # Get user card from stripe
     database = DBManager(pass_file="/run/secrets/db-password")
     customer_id = database.get_stripe_user_id(session.get("email"))
+
+    database.close_connections()
 
     if not customer_id:
         return redirect(url_for("profile"))
@@ -501,7 +493,7 @@ async def manage_payment():
 
     return await render_template(
         "manage-payment.html",
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
         stripe_pk=stripe_keys["public"],
         customer_card=customer_card,
         amount_due=amount_due,
@@ -512,24 +504,24 @@ async def manage_payment():
 async def help():
     return await render_template(
         "help.html",
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
         support_email=server.config["SUPPORT_EMAIL"],
     )
 
 
 @server.route("/flashcard_test", methods=["GET"])
 async def flashcard_test():
-    return await render_template("flashcard_test.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template("flashcard_test.html", last_updated=file_utils.dir_last_updated("./src/static"))
 
 
 @server.route("/flashcard", methods=["GET"])
 async def flashcard():
-    return await render_template("flashcard.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template("flashcard.html", last_updated=file_utils.dir_last_updated("./src/static"))
 
 
 @server.route("/prompt", methods=["GET"])
 async def prompt():
-    return await render_template("prompt.html", last_updated=dir_last_updated("./src/static"))
+    return await render_template("prompt.html", last_updated=file_utils.dir_last_updated("./src/static"))
 
 
 # Get the Q&A set of the associated file.
@@ -546,7 +538,7 @@ async def get_logs(md5_name):
         return await render_template(
             "log_info.html",
             log_data=file.read(),
-            last_updated=dir_last_updated("./src/static"),
+            last_updated=file_utils.dir_last_updated("./src/static"),
         )
 
 
@@ -558,7 +550,7 @@ async def export_flashcard():
         "export-flashcard.html",
         filename=filename,
         md5_name=md5_name,
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
     )
 
 
@@ -570,7 +562,7 @@ async def export_keyword():
         "export-keyword.html",
         filename=filename,
         md5_name=md5_name,
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
     )
 
 
@@ -582,7 +574,7 @@ async def export_test():
         "export-test.html",
         filename=filename,
         md5_name=md5_name,
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
     )
 
 
@@ -726,6 +718,7 @@ async def post_convert_file():
                 pages_processed = page_count - 10  # Numbers of pages we are to charge the user (first 10 are free)
                 database = DBManager(pass_file="/run/secrets/db-password")
                 database.add_pages_processed(session.get("email"), pages_processed)
+                database.close_connections()
 
         if convert_type != "text":
             set_task_attribute(task_id, "page_limit", page_limit)
@@ -789,7 +782,7 @@ async def post_convert_file():
 async def results():
     return await render_template(
         "results.html",
-        last_updated=dir_last_updated("./src/static"),
+        last_updated=file_utils.dir_last_updated("./src/static"),
     )
 
 

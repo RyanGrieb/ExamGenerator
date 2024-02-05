@@ -8,6 +8,9 @@ import asyncio
 import openai
 import logging
 import traceback
+from werkzeug.datastructures import FileStorage
+from pptx import Presentation
+import pypdf
 
 from .async_task import (
     set_task_status,
@@ -17,12 +20,25 @@ from .async_task import (
 )
 
 from .. import file_utils
-
 import re
 from filelock import FileLock
 
 GPT_MODEL = "gpt-3.5-turbo-1106"
 running_unstructured_processes = 0
+
+
+def get_pdf_pages(file: FileStorage):
+    pdf_reader = pypdf.PdfReader(file)
+    return len(pdf_reader.pages)
+
+
+def get_pptx_pages(file: FileStorage) -> int:
+    try:
+        pptx_file = Presentation(file)
+        return len(pptx_file.slides)
+    except Exception as e:
+        print(f"Error: {e}")
+        return 0
 
 
 async def async_document2json(
@@ -611,7 +627,7 @@ async def gpt_generate_qa(server, md5_name, data):
     new_qa_sets = []
     existing_questions = []
     existing_answers = []
-    print(qa_sets, file=sys.stderr)
+
     for i in range(0, len(qa_sets), 2):
         question = qa_sets[i]
         answer = qa_sets[i + 1]
