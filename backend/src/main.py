@@ -134,7 +134,6 @@ def get_customer_invoice():
     # Format the next charge date
     next_charge_date_str = next_charge_date.strftime("%m/%d/%Y")
 
-    database.close_connections()
     return (next_charge_date_str, upcoming_invoice.amount_due)
 
 
@@ -257,8 +256,6 @@ async def register():
         database = DBManager(pass_file="/run/secrets/db-password")
         response, error_msg = database.add_user(email, password)
 
-        database.close_connections()
-
         if response != 0:
             return await render_template(
                 "register.html",
@@ -287,7 +284,6 @@ async def login():
         database = DBManager(pass_file="/run/secrets/db-password")
         db_user_obj, error_msg = database.get_user(email, password)
         # print(db_user_obj, file=sys.stderr)
-        database.close_connections()
 
         if db_user_obj:
             print(db_user_obj, file=sys.stderr)
@@ -409,8 +405,6 @@ async def handle_checkout_session():
     database.set_card_connected(session.get("email"), True)
     session["card_connected"] = True
 
-    database.close_connections()
-
     # Go back to user profile
     return redirect(url_for("profile"))
 
@@ -467,7 +461,6 @@ async def remove_payment():
     # Set our card connected to false.
     database.run_query(f"UPDATE users SET card_connected = 0 WHERE email='{session.get('email')}'")
     session["card_connected"] = False
-    database.close_connections()
 
     return jsonify({"success": True, "return_url": return_url})
 
@@ -477,8 +470,6 @@ async def manage_payment():
     # Get user card from stripe
     database = DBManager(pass_file="/run/secrets/db-password")
     customer_id = database.get_stripe_user_id(session.get("email"))
-
-    database.close_connections()
 
     if not customer_id:
         return redirect(url_for("profile"))
@@ -718,7 +709,6 @@ async def post_convert_file():
                 pages_processed = page_count - 10  # Numbers of pages we are to charge the user (first 10 are free)
                 database = DBManager(pass_file="/run/secrets/db-password")
                 database.add_pages_processed(session.get("email"), pages_processed)
-                database.close_connections()
 
         if convert_type != "text":
             set_task_attribute(task_id, "page_limit", page_limit)

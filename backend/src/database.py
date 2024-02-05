@@ -30,6 +30,9 @@ class DBManager:
         password_file.close()
         self.cursor: MySQLCursor = self.connection.cursor(buffered=True)
 
+    def __del__(self):
+        self.close_connections()
+
     def run_query(self, query: str):
         self.cursor.execute(query)
         self.connection.commit()
@@ -41,9 +44,7 @@ class DBManager:
         subscription_id = self.cursor.fetchone()
         return subscription_id[0] if subscription_id else None
 
-    def assign_user_subscriptions(
-        self, user_id: str, subscription_id: str, subscription_item_id: str
-    ):
+    def assign_user_subscriptions(self, user_id: str, subscription_id: str, subscription_item_id: str):
         query = "UPDATE stripe_users SET subscription_id = %s, subscription_item_id = %s WHERE user_id = %s"
         values = (subscription_id, subscription_item_id, user_id)
         self.cursor.execute(query, values)
@@ -94,9 +95,7 @@ class DBManager:
             # Generate a salt
             salt = os.urandom(16)
             # Hash the password with the salt
-            hashed_password_bytes = hashlib.pbkdf2_hmac(
-                "sha256", password.encode("utf-8"), salt, 100000
-            )
+            hashed_password_bytes = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
 
             query = "INSERT INTO users (email, password, salt, card_connected) VALUES (%s, %s, %s, false)"
             data = (email, hashed_password_bytes.hex(), salt)
