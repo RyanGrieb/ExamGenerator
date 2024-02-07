@@ -1,6 +1,5 @@
 import json
 from quart import Quart
-import tiktoken
 import sys
 import os
 import aiohttp
@@ -215,57 +214,44 @@ def get_logger_for_file(server: Quart, md5_name: str) -> logging.Logger:
     return logger
 
 
-def truncate2gpt_tokens(server: Quart, md5_name: str, pdf_text: str, just_split_pages=False):
+def json2gpt_input(server: Quart, md5_name: str):
     """
-    Given a pdf_text string (Has the formatted page numbers), return a list of text under the 4096 token limit for chat-gpt
+    Converts the unformatted unstructured-io JSON to a list of strings to input into chat-gpt. These strings are split by
+    pages, and max_input_length if the pages' text is too big.
     """
+    min_input_length = 500
+    max_input_length = 1096
+    text_list = []
     logger: logging.Logger = get_logger_for_file(server, md5_name)
-    logger.info("Function: truncate2gpt_tokens")
+    logger.info("Function: json2gpt_input")
 
-    # Split the input string into sections based on "===page:" pattern
-    sections = pdf_text.split("===Page:")
-    current_page = -1
-    page_sections = []
-    # Iterate through the sections
-    for section in sections[1:]:  # Start from index 1 to skip the first empty section
-        page = int(section.split("=")[0])
-        # print(page)
-        # print(repr(f"{section}"))
-        # If were onto a new page, increment our page sections list.
-        if current_page != page:
-            current_page = page
-            page_sections.append("")
+    with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "r") as file:
+        json_data = json.load(file)
 
-        section = "===Page:" + section
+        for json_element in json_data:
+            text = json_element.get("text")
 
-        page_sections[-1] += section
+            if not text or len(text) < 1:
+                continue
 
-    logger.debug(f"Page sections w/ length of: {len(page_sections)}")
-    logger.debug(page_sections)
+            # Merge the text if it's length is < min_input_length. (But make sure we don't exceed max_input_length either!)
+            # Merge the text if its length is < min_input_length, but don't exceed max_input_length
+            if len(text) < min_input_length:
+                if text_list and len(text_list[-1]) + len(text) <= max_input_length:
+                    # Merge with the last item in text_list if it doesn't exceed max_input_length
+                    text_list[-1] += f" {text}"
+                else:
+                    # Add as a separate item if merging would exceed max_input_length
+                    text_list.append(text)
+            else:
+                # Break the text apart into new strings until each new text segment is < max_input_length
+                if len(text) > max_input_length:
+                    while len(text) > max_input_length:
+                        text_list.append(text[:max_input_length])
+                        text = text[max_input_length:]
+                text_list.append(text)
 
-    if just_split_pages:
-        return page_sections
-
-    # Count the number of tokens for each page. Include what can be fit into our 4096 context for each string in the list.
-    # FIXME: ACCOUNT FOR PDFs WHERE A SINGLE PAGE > 4096 TOKENS!!!!!!!!!!!!!!!
-    # NOTE: Right now we use 1000 tokens to keep gpt accurate and consise for our information provided.
-    truncated_pdf_text = []
-    current_tokens = 0
-    total_tokens = 0
-    encoding = tiktoken.encoding_for_model(GPT_MODEL)
-    for section in page_sections:
-        num_tokens = len(encoding.encode(section))
-
-        if num_tokens + current_tokens >= 1000 or len(truncated_pdf_text) < 1:
-            truncated_pdf_text.append("")
-            total_tokens += current_tokens
-            current_tokens = 0
-
-        truncated_pdf_text[-1] += section
-        current_tokens += num_tokens
-
-    logger.debug(f"Number of tokens used for pdf text: {total_tokens}")
-    return truncated_pdf_text
+    return text_list
 
 
 # Get tokens from pdf elements and merge them onto a single line.
@@ -280,105 +266,6 @@ def merge_pdf_json_elements(elements):
             formatted_text += f"{text} "
 
     return formatted_text.rstrip()
-
-
-# Parses the json file & creates a formatted .txt file of the PDF for ChatGPT to read.
-def json2text(server: Quart, md5_name: str):
-    logger: logging.Logger = get_logger_for_file(server, md5_name)
-    logger.info("Function: json2text")
-
-    with open(f'{server.config["JSON_FOLDER"]}/{md5_name}.json', "r") as file:
-        json_data = json.load(file)
-
-        # 1. Skip any uncessary json_items (page breaks, empty text, duplicate tokens)
-        truncated_json_data = []
-        existing_text_tokens = []
-        for json_item in json_data:
-            # Skip any page breaks, empty text, or duplicate text tokens.
-            if json_item["type"] == "PageBreak":
-                continue
-
-            item_text: str = json_item["text"]
-
-            if len(item_text) < 1:
-                continue
-
-            # FIXME: TEST IF THIS STATEMENT MESS UP OUR RESPONSES!! (MIGHT REMOVE IMPORTANT DATA??)
-            if item_text in existing_text_tokens:
-                continue
-
-            truncated_json_data.append(json_item)
-            existing_text_tokens.append(json_item["text"])
-
-        # 2.  Remove page numbers from our data (But not the other important ones!)
-        # List of json_items that are numbers. We check theses lists against each other & remove page numbers
-        prev_numbers_on_page = []
-        numbers_on_page = []
-
-        # List of all json_items that we suspect are page numbers
-        page_number_json_items = []
-        current_page = 0
-        for index, json_item in enumerate(truncated_json_data):
-            item_page_number = json_item["metadata"]["page_number"]
-            item_text = json_item["text"]
-
-            # Ensure we check the last json_item number before going into that if-conditon below
-            if index == len(truncated_json_data) - 1 and item_text.isdigit():
-                numbers_on_page.append(json_item)
-
-            if item_page_number != current_page or index == len(truncated_json_data) - 1:
-                current_page = item_page_number
-
-                # Compare prev_numbers_on_page w/ numbers_on_page, if we see a +1 increment b/w them, append both to page_number_json_items
-                for prev_json_digit_item in prev_numbers_on_page:
-                    for json_digit_item in numbers_on_page:
-                        if int(json_digit_item["text"]) - 1 == int(prev_json_digit_item["text"]):
-                            if prev_json_digit_item not in page_number_json_items:
-                                page_number_json_items.append(prev_json_digit_item)
-                            if json_digit_item not in page_number_json_items:
-                                page_number_json_items.append(json_digit_item)
-
-                prev_numbers_on_page = list(numbers_on_page)
-                numbers_on_page.clear()
-
-            # Add any digits found to numbers_on_page
-            if item_text.isdigit():
-                numbers_on_page.append(json_item)
-
-        logger.debug(f"Page number elements found (and to remove): {len(page_number_json_items)}")
-        logger.debug(f"Removing page #'s: Length of BEFORE json_data: {len(truncated_json_data)}")
-        truncated_json_data = [
-            json_item for json_item in truncated_json_data if json_item not in page_number_json_items
-        ]
-        logger.debug(f"Removing page #'s:  Length of AFTER json_data: {len(truncated_json_data)}")
-
-        # 3.  Generate formatted text from our pre-processed json-elements
-        formatted_text = ""
-        current_page = 0
-        page_elements = []
-        for json_item in truncated_json_data:
-            item_page_number = json_item["metadata"]["page_number"]
-
-            if item_page_number != current_page:
-                # End the current page block
-                if current_page != 0:
-                    # Before ending the page block, format our page elements and append them to the page.
-                    formatted_text += merge_pdf_json_elements(page_elements)
-                    formatted_text += f"\n===Page:{current_page}===\n"
-                    page_elements.clear()
-
-                # Start the new page block
-                formatted_text += f"===Page:{item_page_number}===\n"
-                current_page = item_page_number
-
-            # Append json_item elements to the current page
-            page_elements.append(json_item)
-
-    # End the current page block since were finished parsing, along with it's json elements.
-    formatted_text += merge_pdf_json_elements(page_elements)
-    formatted_text += f"\n===Page:{current_page}===\n"
-
-    return formatted_text
 
 
 async def gpt_generate_test_questions(server, md5_name, data, conversion_options: dict):
@@ -566,7 +453,7 @@ async def gpt_generate_qa(server, md5_name, data, conversion_options: dict):
     # print(f"*********************** Generate Q&A from text chunk:\n{data}")
     logger.debug(f"*********************** Generate Q&A from text chunk:\n{data}")
 
-    prompt = f"Generate brief, clever Q&A flashcards each page from the following UNORDERED tokens. Generate very short questions and answers, as these are meant to be flashcards. If multiple bullet points on a topic are present, ensure relevant flashcards for each bullet point are created. Only respond with: 'Q: ... [NEWLINE] A: ...' Here is the provided data:\n{data}"
+    prompt = f"Generate brief, 'brain-friendly' Q&A flashcards from the provided data.\nYou are required to respond with: 'Q: ... [NEWLINE] A: ...'\nHere is the provided data:\n{data}"
 
     response = await openai.ChatCompletion.acreate(
         model=GPT_MODEL,
@@ -593,6 +480,7 @@ async def gpt_generate_qa(server, md5_name, data, conversion_options: dict):
     if "Q2A: None" in response_data:
         return None
 
+    print(response_data, file=sys.stderr)
     # Create out q&a sets by splitting newlines
     qa_sets = response_data.split("\n")
 
@@ -605,7 +493,7 @@ async def gpt_generate_qa(server, md5_name, data, conversion_options: dict):
     if len(qa_sets) <= 0 or qa_sets[0] is None:
         return []
 
-    # print(qa_sets, file=sys.stderr)
+    print(qa_sets, file=sys.stderr)
 
     if len(qa_sets) % 2 != 0:
         print(
@@ -675,21 +563,18 @@ async def async_json2convert_type(
                     set_task_status(task_id, "completed")
                     return
 
-    pdf_text = json2text(server, md5_name)
+    text_list = json2gpt_input(server, md5_name)
 
     logger.debug("JSON text (converted from JSON): ")
-    logger.debug(pdf_text)
-
-    truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
-    logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
+    logger.debug(text_list)
 
     generated_sets = []
-    for index, text_chunk in enumerate(truncated_pdf_text):
+    for index, text_chunk in enumerate(text_list):
         set = await gpt_generate_functions[convert_type](server, md5_name, text_chunk, conversion_options)
         if set is None:
             continue
         generated_sets = generated_sets + set
-        set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
+        set_task_progress(task_id, float(index + 1) / float(len(text_list)))
 
     append_json_value_to_file(
         processed_file,

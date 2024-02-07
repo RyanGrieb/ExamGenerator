@@ -1,13 +1,7 @@
 * ASAP BEFORE ADVERTISTING*
-- If we remove a file (front-end), make sure we don't have any running get_task_status w/ the associated file & it's conversion_type.
-- fix: remove payment broken
-- Test viewing paid files from user 1 as user 2. User 2 should NOT be able to see all results.
-- Implement pay-by-output. Where users pay X cents each flashcard/set/question
-- Change payment method: Have users upload any file, process file fully. Hide flashcards 5 for guests, 10 for free users. Pay X cents each flashcard to see all.
-- Limit guest/free accounts to 1 / 5 documents a day.
+- Sign in w/ google.
+- Sign in w/ apple.
 - Implement dark/light mode detection & dynamicaly load css based on user's desktop theme.
-- Rewrite GPT API interactions. Send a chat containing our data EACH PAGE? Have the conversations continue instead of starting new ones?
-    We need to generate multiple flashcards, at least as much as our competitor where they generate 20+ from 1-2 pages worth.
 - Test payments on production
 - Create admin account to test on production
 - Google adsense
@@ -15,6 +9,7 @@
 - Google ad compaign: Hire some dude off fiverr and make the following images
     image: Minimum size: 600 x 314 pixels. Recommended size: 1200 x 628 pixels. Max size: 4096 x 4096 pixels.
     logo: Minimum size: 128 x 128 pixels. Recommended size: 1200 x 1200 pixels. Max size: 4096 x 4096 pixels.
+- Implement request refund feature (Some users may not be satisfied with generated output, give them that option.)
 
 *** Improve output via. re-processing ***
     Have GPT re-process these
@@ -52,6 +47,9 @@ https://ankigpt.help/deck/8499b561-0f84-4366-9f5e-482817e29445
 
 
 * Not as important things to do *
+- If we remove a file (front-end), make sure we don't have any running get_task_status w/ the associated file & it's conversion_type.
+- Test viewing paid files from user 1 as user 2. User 2 should NOT be able to see all results. (**** I think this is fixed.)
+- Limit guest/free accounts to 1 / 5 documents a day.
 - Write chmod script to renew https certs. & restart the proxy-https container.
 - Handle stripe user deleted while card is connected.
 - Confirm email prompt
