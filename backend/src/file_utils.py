@@ -27,6 +27,24 @@ def remove_json_value(file_path, key):
 # remove_json_value('data.json', 'name')
 
 
+def append_file_json_value(file_path, key, value):
+    with open(file_path, "r+") as file:
+        data = json.load(file)
+
+        print("***** append_file_json_value", file=sys.stderr)
+        print((key in data), file=sys.stderr)
+        if key in data:
+            print((isinstance(data[key], dict)), file=sys.stderr)
+
+        if key in data and isinstance(data[key], dict):
+            data[key].update(value)  # Append the dictionary values here
+        else:
+            data[key] = value
+        file.seek(0)
+        json.dump(data, file)
+        file.truncate()
+
+
 def set_file_json_value(file_path, key, value):
     try:
         with open(file_path, "r+") as file:
@@ -43,15 +61,23 @@ def set_file_json_value(file_path, key, value):
         print(f"An error occurred: {e}", file=sys.stderr)
 
 
+# FIXME: Maybe just make this get_file_json_value and remove the metadata shit?
 def get_file_metadata(server: Quart, md5_name, key):
     metadata_folder = server.config["METADATA_FOLDER"]
-
     metadata_file_path = os.path.join(metadata_folder, f"{md5_name}.json")
 
     if os.path.exists(metadata_file_path):
         with open(metadata_file_path, "r") as metadata_file:
             metadata = json.load(metadata_file)
             return metadata.get(key, None)
+    else:
+        return None
+
+
+def get_file_json(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "r") as metadata_file:
+            return json.load(metadata_file)
     else:
         return None
 

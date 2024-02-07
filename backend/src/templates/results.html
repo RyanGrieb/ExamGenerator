@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
 {% block head %}
 <script src="{{ url_for('static',filename='js/results.js') }}?u={{ last_updated }}"></script>
+<script>
+    const single_item_cost = parseFloat("{{ single_item_cost }}")
+    let user_type = "paid"
+    if (!card_connected && logged_in) {
+        user_type = "free"
+    } else if (!logged_in) {
+        user_type = "guest"
+    }
+</script>
 {% endblock %}
 {% block body %}
 <div class="results-layout">

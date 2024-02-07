@@ -7,7 +7,7 @@
         <p>Your Account: {{session.email}}</p>
         {% if session.card_connected %}
         <p>Account Type: Paid</p>
-        <p>Monthly Usage: {{amount // 2}} pages / ${{amount / 100}}</p>
+        <p>Monthly Usage: {{amount // 2}} results / ${{amount / 100}}</p>
         <p>Billing Due: {{charge_date}}</p>
         <div class="profile-buttons">
             <a href="/manage-payment">

@@ -344,63 +344,8 @@ function upload_files() {
 }
 
 async function convert_files() {
-  // Number of pages (-10 each document) the user is to be charged.
-  let paid_page_count = 0;
-  let page_count = 0;
-
-  for (const uploaded_file of uploaded_files) {
-    page_count += uploaded_file.page_count;
-    paid_page_count += uploaded_file.page_count - 10;
-  }
-
-  if (page_count > 0) {
-    console.log("Total pages " + page_count);
-    // Confirm with user the price of the conversion.
-    // Create a dialog box with html. It is called prompt.html from another folder
-    const response = await fetch("/prompt"); // Update with the correct endpoint
-
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-
-    const cost = paid_page_count * 0.02;
-    if (cost < 0) {
-      UploadedFile.save_all_to_cookie();
-      window.location.href = "/results";
-      return;
-    }
-
-    const prompt_html = await response.text();
-    const prompt_container = document.createElement("div");
-
-    prompt_container.innerHTML = prompt_html;
-    document.body.appendChild(prompt_container);
-
-    const prompt_message = document.querySelector(".prompt-message");
-    if (!card_connected) {
-      if (logged_in) {
-        prompt_message.innerHTML =
-          "You are limited to 10 pages for this conversion. <a href='/add-payment'>Add a payment</a> for more.";
-      } else {
-        prompt_message.innerHTML =
-          "You are limited to 3 pages for this conversion. <a href='/register'>Sign up</a> for more.";
-      }
-    } else {
-      prompt_message.innerHTML = `This conversion will use ${paid_page_count} pages, costing $${cost}`;
-    }
-
-    const prompt_confirm_btn = document.querySelector(".prompt-confirm-btn");
-    const prompt_cancel_btn = document.querySelector(".prompt-cancel-btn");
-
-    prompt_confirm_btn.onclick = () => {
-      UploadedFile.save_all_to_cookie();
-      window.location.href = "/results";
-    };
-
-    prompt_cancel_btn.onclick = () => {
-      document.body.removeChild(prompt_container);
-    };
-  }
+  UploadedFile.save_all_to_cookie();
+  window.location.href = "/results";
 }
 
 window.addEventListener("load", () => {

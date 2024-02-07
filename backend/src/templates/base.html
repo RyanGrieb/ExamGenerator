@@ -17,6 +17,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="robots" content="index, follow">
     <title>PDF2Flashcards</title>
+    <script>
+        const card_connected = ("{{ session.card_connected }}".toLowerCase() === "true" || "{{ session.card_connected }}".toLowerCase() === "1")
+        const logged_in = ("{{ session.logged_in }}".toLowerCase() === "true")
+    </script>
     {% block head %}{% endblock %}
 </head>
 

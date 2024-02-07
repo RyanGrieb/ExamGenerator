@@ -1,11 +1,17 @@
 * ASAP BEFORE ADVERTISTING*
-- Limit guest/free accounts to 1 upload each.
-- Close DB connections after use
+- If we remove a file (front-end), make sure we don't have any running get_task_status w/ the associated file & it's conversion_type.
+- fix: remove payment broken
+- Test viewing paid files from user 1 as user 2. User 2 should NOT be able to see all results.
+- Implement pay-by-output. Where users pay X cents each flashcard/set/question
+- Change payment method: Have users upload any file, process file fully. Hide flashcards 5 for guests, 10 for free users. Pay X cents each flashcard to see all.
+- Limit guest/free accounts to 1 / 5 documents a day.
+- Implement dark/light mode detection & dynamicaly load css based on user's desktop theme.
 - Rewrite GPT API interactions. Send a chat containing our data EACH PAGE? Have the conversations continue instead of starting new ones?
+    We need to generate multiple flashcards, at least as much as our competitor where they generate 20+ from 1-2 pages worth.
 - Test payments on production
 - Create admin account to test on production
 - Google adsense
-- setup support email (pdf2flashcards@gmail.com would work for now.)
+- setup support email (pdf2flashcards@gmail.com would work for now. doc2ai@gmail.com ? ? ? ?)
 - Google ad compaign: Hire some dude off fiverr and make the following images
     image: Minimum size: 600 x 314 pixels. Recommended size: 1200 x 628 pixels. Max size: 4096 x 4096 pixels.
     logo: Minimum size: 128 x 128 pixels. Recommended size: 1200 x 1200 pixels. Max size: 4096 x 4096 pixels.
@@ -17,12 +23,14 @@
     0. Edgecase: Remove '-' at beginning of keyword for keyword/definition generation
 
 
+** See competitor:
+https://ankigpt.help/deck/8499b561-0f84-4366-9f5e-482817e29445
+
 * DECEMBER * (Improve output, Export features, User Accounts)
 1. Export test/quiz to google forms. Export UI, question selection/editor.
 2. Give title to PDF export tab. - Rewrite export feature, better flashcards to PDF, support keyword/definition to PDF, support test/quiz to PDF.
 3. Implement export to cheatsheet feature (For keyword: definition feature)
 4. Improve Q&A flashcard output, e.g. duplicate questions, ect.
-5. Support PPTX files.
 7. Saved documents for user accounts, regardless of cookies.
 
 * JANUARY * (Premium accounts, Look & Feel, SEO)

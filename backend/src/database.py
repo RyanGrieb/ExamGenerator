@@ -31,12 +31,91 @@ class DBManager:
         self.cursor: MySQLCursor = self.connection.cursor(buffered=True)
 
     def __del__(self):
-        self.close_connections()
+        ...
+        # self.close_connections()
 
     def run_query(self, query: str):
         self.cursor.execute(query)
         self.connection.commit()
         return self.cursor.fetchone()
+
+    def assign_user_file(self, email, md5_name, conversion_type, data_length: int):
+        db_user_id = self.get_db_user_id(email)
+        add_file_query = (
+            "INSERT INTO paid_files (md5_name, conversion_type, data_length, paid) VALUES (%s, %s, %s, False)"
+        )
+        self.cursor.execute(
+            add_file_query,
+            (md5_name, conversion_type, data_length),
+        )
+        # Get the file_id from our newly created file
+        file_id = self.cursor.lastrowid
+        # Add file_id & user_id to our file_join_table
+
+        add_file_join_query = "INSERT INTO paid_files_jt (user_id, file_id) VALUES (%s, %s)"
+        self.cursor.execute(add_file_join_query, (db_user_id, file_id))
+        self.connection.commit()
+
+    def user_has_paid_file(self, email, md5_name, conversion_type):
+        check_payment_query = """
+            SELECT 1
+            FROM paid_files pf
+            INNER JOIN paid_files_jt uft ON pf.file_id = uft.file_id
+            INNER JOIN users u ON uft.user_id = u.id
+            WHERE u.email = %s AND pf.md5_name = %s AND pf.conversion_type = %s
+        """
+        self.cursor.execute(check_payment_query, (email, md5_name, conversion_type))
+        result = self.cursor.fetchone()
+
+        return bool(result)
+
+    def pay_for_file(self, email, md5_name, conversion_type, data_length):
+        # Add this file into our paid_files table
+        db_user_id = self.get_db_user_id(email)
+        add_file_query = "INSERT INTO paid_files (md5_name, conversion_type, data_length) VALUES (%s, %s, %s)"
+        self.cursor.execute(
+            add_file_query,
+            (md5_name, conversion_type, data_length),
+        )
+        # Get the file_id from our newly created file
+        file_id = self.cursor.lastrowid
+
+        # Add file_id & user_id to our file_join_table
+        add_file_join_query = "INSERT INTO paid_files_jt (user_id, file_id) VALUES (%s, %s)"
+        self.cursor.execute(add_file_join_query, (db_user_id, file_id))
+        self.connection.commit()
+
+        stripe_user_id = self.get_stripe_user_id(email)
+
+        subscription_query = f"""
+        SELECT subscription_item_id
+        FROM stripe_users
+        WHERE user_id = '{stripe_user_id}'
+        """
+
+        self.cursor.execute(subscription_query)
+        subscription_item_id: str = self.cursor.fetchone()[0]
+
+        paid_quantity = data_length - 10
+        if paid_quantity <= 0:
+            return
+
+        stripe.SubscriptionItem.create_usage_record(
+            subscription_item_id,
+            quantity=paid_quantity,
+            timestamp=int(time.time()),
+            action="increment",
+        )
+
+    def get_db_user_id(self, email):
+        query = "SELECT id FROM users WHERE email = %s"
+        self.cursor.execute(query, (email,))
+        cursor_result_tuple = self.cursor.fetchone()
+
+        if len(cursor_result_tuple) < 1:
+            return -1
+
+        return cursor_result_tuple[0]
 
     def get_user_subscription_id(self, user_id):
         query = "SELECT subscription_id FROM stripe_users WHERE user_id = %s"
@@ -49,37 +128,6 @@ class DBManager:
         values = (subscription_id, subscription_item_id, user_id)
         self.cursor.execute(query, values)
         self.connection.commit()
-
-    def add_pages_processed(self, email: str, amount: int):
-        query = f"UPDATE users SET pages_processed = pages_processed + {amount} WHERE email='{email}'"
-        self.cursor.execute(query)
-        self.connection.commit()
-
-        # Get user_id from email: SELECT stripe_user_id from users WHERE email='{email}'
-        subscription_query = f"""
-        SELECT subscription_item_id, subscription_id
-        FROM stripe_users
-        WHERE user_id = (
-            SELECT stripe_user_id
-            FROM users
-            WHERE email = '{email}'
-        )
-        """
-        self.cursor.execute(subscription_query)
-        subscription_item_id: str = self.cursor.fetchone()[0]
-
-        stripe.SubscriptionItem.create_usage_record(
-            subscription_item_id,
-            quantity=amount,
-            timestamp=int(time.time()),
-            action="increment",
-        )
-
-    def get_pages_processed(self, email) -> int:
-        query = "SELECT pages_processed FROM users WHERE email = %s"
-        self.cursor.execute(query, (email,))
-        pages_processed: int = self.cursor.fetchone()[0]
-        return pages_processed
 
     def add_user(self, email: str, password: str):
         try:
@@ -186,8 +234,10 @@ class DBManager:
         self.connection.commit()
 
     def close_connections(self):
-        self.cursor.close()
-        self.connection.close()
+        if self.cursor:
+            self.cursor.close()
+        if self.connection:
+            self.connection.close()
 
 
 """

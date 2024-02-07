@@ -5,6 +5,7 @@ class FileData {
     this.conversion_types = conversion_types;
     this.conversion_options = conversion_options; //Dictonary
     this.data = {};
+    this.data_lengths = {};
     this.error_msg = undefined;
   }
 }
@@ -15,6 +16,88 @@ let files_data = {};
 let progress_bars = {};
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+function inform_limited_data_output(results_output, conversion_type, file_data) {
+  const total_data_length = file_data.data_lengths[conversion_type];
+  const data_length = file_data.data[conversion_type].length;
+  if (data_length < total_data_length) {
+    const show_more_region = document.createElement("div");
+    show_more_region.classList.add("show-more-region");
+    const prompt_text = document.createElement("h2");
+    prompt_text.classList.add("center-text");
+    switch (user_type) {
+      case "guest":
+        prompt_text.innerHTML = `Guests are limited to view 5 results. <a href='/register'>Register</a> to view all <b>${total_data_length}</b> results.`;
+        break;
+      case "free":
+        prompt_text.innerHTML = `Free accounts limited to view 10 results. <a href='add-payment'>Upgrade</a> to view all <b>${total_data_length}</b> results.`;
+        break;
+
+      case "paid":
+        const remaining_items = total_data_length - data_length;
+        const cost = parseFloat(single_item_cost * remaining_items).toFixed(2);
+        prompt_text.innerHTML = `Unlock ${remaining_items} remaining results for $${cost}.`;
+
+        const unlock_button = document.createElement("button");
+        unlock_button.classList.add("button-1", "unlock-button");
+        unlock_button.textContent = "Unlock";
+        unlock_button.onclick = () =>
+          prompt_unlock_file(results_output, conversion_type, file_data, cost, remaining_items);
+        show_more_region.appendChild(unlock_button);
+        break;
+    }
+
+    show_more_region.appendChild(prompt_text);
+    results_output.appendChild(show_more_region);
+  }
+}
+
+async function prompt_unlock_file(results_output, conversion_type, file_data, cost, remaining_items) {
+  const response = await fetch("/prompt");
+  const prompt_html = await response.text();
+  const prompt_container = document.createElement("div");
+  prompt_container.id = "prompt-unlock-file";
+
+  prompt_container.innerHTML = prompt_html;
+  document.body.appendChild(prompt_container);
+
+  const prompt_message = document.querySelector(".prompt-message");
+  prompt_message.innerHTML = `It will cost <b>$${cost}</b> to view <b>${remaining_items}</b> remaining results. Do you want to continue?`;
+
+  const prompt_confirm_btn = document.querySelector(".prompt-confirm-btn");
+  const prompt_cancel_btn = document.querySelector(".prompt-cancel-btn");
+
+  prompt_confirm_btn.onclick = () => {
+    unlock_file(results_output, conversion_type, file_data);
+  };
+
+  prompt_cancel_btn.onclick = () => {
+    document.body.removeChild(prompt_container);
+  };
+}
+
+async function unlock_file(results_output, conversion_type, file_data) {
+  const formData = new FormData();
+  formData.append("filename", file_data.filename);
+  formData.append("md5_name", file_data.md5_name);
+  formData.append("conversion_type", conversion_type);
+
+  // Send a POST request to the server and wait for the response
+  const response = await fetch("/unlockfile", {
+    method: "POST",
+    body: formData,
+  });
+  console.log(response);
+
+  if (response.ok) {
+    const responseData = await response.json();
+    console.log(responseData);
+    // Just do another GET request by calling get_converted_file or something
+    await get_converted_file(file_data, conversion_type);
+    await display_file_data(file_data.filename, file_data.md5_name, conversion_type);
+    document.body.removeChild(document.getElementById("prompt-unlock-file"));
+  }
+}
 
 async function display_file_data(filename, md5_name, conversion_type) {
   const file_data = files_data[md5_name];
@@ -43,6 +126,7 @@ async function display_file_data(filename, md5_name, conversion_type) {
     title_elem.innerHTML = `${filename} Test/Quiz Questions:`;
     results_output.appendChild(title_elem);
 
+    inform_limited_data_output(results_output, conversion_type, file_data);
     // Construct Test Question/Answer pairs
     const test_questions_set_div = document.createElement("div");
     for (const [index, test_question_set] of file_data.data[conversion_type].entries()) {
@@ -59,6 +143,8 @@ async function display_file_data(filename, md5_name, conversion_type) {
   if (conversion_type == "keywords") {
     title_elem.innerHTML = `${filename} Keyword/Definition Pair:`;
     results_output.appendChild(title_elem);
+
+    inform_limited_data_output(results_output, conversion_type, file_data);
 
     // Construct Keyword/Definition pairs
     const keywords_sets_div = document.createElement("div");
@@ -92,14 +178,19 @@ async function display_file_data(filename, md5_name, conversion_type) {
       results_output.appendChild(flashcardDiv);
       set_flashcard(file_data, 0, 0);
 
+      // FIXME: Make this a method so we can use it for tests & keyword-definition pairs.
+      // Inform user they can increase the amount of flashcards viewed, if applicable:
+      inform_limited_data_output(results_output, conversion_type, file_data);
+
       // Construct Q&A sets
       const qa_sets_div = document.createElement("div");
       for (const qa_set of file_data.data["flashcards"]) {
         const p_element = document.createElement("p");
         p_element.className = "output-text";
-        p_element.innerHTML = `${qa_set[0]} | ${qa_set[1]}`;
+        p_element.innerHTML = `<b>${qa_set[0]}</b> <br><br> ${qa_set[1]}`;
         qa_sets_div.appendChild(p_element);
       }
+
       results_output.appendChild(qa_sets_div);
     } catch (error) {
       console.error("There was a problem fetching the flashcard HTML:", error);
@@ -110,7 +201,7 @@ async function display_file_data(filename, md5_name, conversion_type) {
 function set_flashcard(file_data, side, page) {
   // Set flashcard title
   const flashcard_text = file_data.data["flashcards"][page][side];
-  const total_pages = file_data.data["flashcards"].length;
+  const total_pages = file_data.data_lengths["flashcards"];
   document.querySelector(".flashcard-text p").innerHTML = flashcard_text;
   // Set flashcard page
   document.querySelector(".flashcard-count p").innerHTML = `${page + 1} / ${total_pages}`;
@@ -170,7 +261,8 @@ async function get_converted_file(file_data, conversion_type) {
     // Print the plaintext string here:
     let json_data = JSON.parse(await response.text());
     console.log(json_data);
-    file_data.data[conversion_type] = json_data;
+    file_data.data[conversion_type] = json_data.data;
+    file_data.data_lengths[conversion_type] = json_data.data_length;
     set_file_status(file_data.md5_name, conversion_type, "checkmark-done");
 
     return "ok";

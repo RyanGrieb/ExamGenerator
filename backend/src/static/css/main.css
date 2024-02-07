@@ -9,6 +9,10 @@
   --font-family: "Trebuchet MS", "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", sans-serif;
 }
 
+a {
+  color: var(--gradient-5);
+}
+
 input[type="radio"] {
   accent-color: var(--gradient-1);
 }
@@ -718,6 +722,17 @@ input[type="submit"] {
 
 .error-text {
   color: rgb(196, 6, 6);
+}
+
+.show-more-region {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--gradient-3);
+  padding: 15px;
+  border: 6px ridge var(--gradient-4);
+  border-radius: 8px;
 }
 
 /* The typing effect */

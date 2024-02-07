@@ -8,7 +8,13 @@ import stripe
 from . import file_utils
 from .async_actions import exporter
 from .async_actions import document_processing
-from .async_actions.async_task import set_task_status, set_task_attribute, running_tasks, on_task_status
+from .async_actions.async_task import (
+    get_task_attribute,
+    set_task_status,
+    set_task_attribute,
+    running_tasks,
+    on_task_status,
+)
 from quart import (
     Quart,
     Request,
@@ -41,6 +47,7 @@ EXPORT_FOLDER = "./data/exports"
 ALLOWED_EXTENSIONS = {"pdf", "pptx"}
 CONCURRENT_TEXT_PROCESS_LIMIT = 2  # How many files unstructured API can handle at a time.
 SUPPORT_EMAIL = "???@???.com"
+SINGLE_ITEM_COST = 0.02
 
 
 # Configure quart
@@ -55,6 +62,7 @@ server.config["METADATA_FOLDER"] = METADATA_FOLDER
 server.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024  # 15mb
 server.config["CONCURRENT_TEXT_PROCESS_LIMIT"] = CONCURRENT_TEXT_PROCESS_LIMIT
 server.config["SUPPORT_EMAIL"] = SUPPORT_EMAIL
+server.config["SINGLE_ITEM_COST"] = SINGLE_ITEM_COST
 server.secret_key = "opnqpwefqewpfqweu32134j32p4n1234d"
 
 # Setup redis
@@ -82,11 +90,22 @@ stripe.api_key = stripe_keys["private"]
 openai.api_key = OPENAI_API_KEY
 
 
-def get_user_page_limit():
+def get_user_data_limit(md5_name, conversion_type):
+    """
+    Returns the number of values the user is allowed to view depending on the account, card_connected, and if they paid to view the remaining data.
+    """
     if not session.get("logged_in"):
-        return 3
+        return 5
+
     if not session.get("card_connected"):
         return 10
+
+    # TODO: Check DB to see if user has paid to view results of md5 file & it's conversion_type.
+    database = DBManager(pass_file="/run/secrets/db-password")
+    paid = database.user_has_paid_file(session.get("email"), md5_name, conversion_type)
+    if not paid:
+        return 10
+
     return -1
 
 
@@ -200,19 +219,24 @@ async def upload_file(request: Request):
 
     # Save the file's metadata to the filesystem
     # TODO: Save IP of user who uploaded.
-    metadata = {
-        "file_name": filename,
-        "md5_name": md5_name,
-        "page_count": number_of_pages,
-        "extension_type": file_extension,
-    }
-
     metadata_file_path = os.path.join(server.config["METADATA_FOLDER"], f"{md5_name}.json")
-    with open(metadata_file_path, "w") as metadata_file:
-        json.dump(metadata, metadata_file)
+    if not os.path.exists(metadata_file_path):
+        metadata = {
+            "file_name": filename,
+            "md5_name": md5_name,
+            "page_count": number_of_pages,
+            "extension_type": file_extension,
+        }
+
+        with open(metadata_file_path, "w") as metadata_file:
+            json.dump(metadata, metadata_file)
+
+    # Update the metadata variable to get all metadata values from the file ()
+    metadata = file_utils.get_file_json(metadata_file_path)
 
     # Release the pointer that reads the file so we can save it properly
     file.stream.seek(0)
+
     # FIXME: Check if file already exists, if so dont bother saving it again.
     await file.save(os.path.join(server.config["UPLOAD_FOLDER"], file.filename))
 
@@ -630,7 +654,7 @@ def get_convert_file():
     filename = request.args.get("filename")
     md5_name = request.args.get("md5_name")
     conversion_type = request.args.get("conversion_type")
-    user_page_limit = get_user_page_limit()
+    user_data_limit = get_user_data_limit(md5_name, conversion_type)
     print(f"Convertfile GET - Get {conversion_type} of {filename}", file=sys.stderr)
 
     if filename and md5_name and conversion_type:
@@ -640,23 +664,14 @@ def get_convert_file():
                 data = json.load(file)
 
                 if conversion_type in data:
-                    pages_processed = data[conversion_type]["pages_processed"]
-                    total_pages = file_utils.get_file_metadata(server, md5_name, "page_count")
-                    if total_pages > pages_processed and (user_page_limit == -1 or user_page_limit > pages_processed):
-                        # Check if the document needs to be re-processed (converted by a free/guest user, but higher lvl user wants it)
-                        # Delete the old conversion_type form our page
-                        file_utils.remove_json_value(file_path, conversion_type)
-                        return (
-                            jsonify(
-                                {
-                                    "error": f"Conversion type '{conversion_type}' not found",
-                                    "error_type": "no_conversion",
-                                }
-                            ),
-                            400,
-                        )
-                    # If document doesn't need to be re-processed, and we found the conversion_type. Send the data.
-                    return data[conversion_type]["data"]
+                    data = data[conversion_type]["data"]
+                    data_length = len(data)
+
+                    # Limit the number of data (flashcards, sets, test questions) if needed
+                    if user_data_limit != -1:
+                        data = data[:user_data_limit]
+
+                    return jsonify({"data": data, "data_length": data_length})
                 else:
                     return (
                         jsonify(
@@ -673,6 +688,31 @@ def get_convert_file():
             return jsonify({"error": f"Error: {str(e)}", "error_type": "unknown"}), 500
     else:
         return jsonify({"error": "Missing parameters", "error_type": "missing_params"}), 400
+
+
+@server.route("/unlockfile", methods=["POST"])
+async def post_unlock_file():
+    request_form = await request.form
+    # filename = request_form.get("filename")
+    md5_name = request_form.get("md5_name")
+    convert_type = request_form.get("conversion_type")
+
+    if not session.get("logged_in"):
+        return {"error": "not logged in"}
+
+    if not session.get("card_connected"):
+        return {"error:": "card not connected"}
+
+    # TODO: Have the client send a preview of how much the user sees they are paying. If our backend cost doesn't match. Stop here.
+
+    # FIXME: Do a keycheck here.
+    data_length = file_utils.get_file_metadata(server, md5_name, "data_lengths")[convert_type]
+
+    database = DBManager(pass_file="/run/secrets/db-password")
+    database.pay_for_file(session.get("email"), md5_name, convert_type, data_length)
+
+    # FIXME: Should we return anything?
+    return {}
 
 
 @server.route("/convertfile", methods=["POST"])
@@ -692,72 +732,32 @@ async def post_convert_file():
         set_task_attribute(task_id, "md5_name", md5_name)
         set_task_attribute(task_id, "convert_type", convert_type)
 
-        # Limit the number of pages during conversion for free/ guest users
-        page_limit = -1  # -1 Is default for paid users.
-        if session.get("logged_in"):
-            if not session.get("card_connected"):
-                page_limit = 10
-        else:
-            page_limit = 3
-
-        # Update the pages_processed for the user, if they exist once the task has completed successfuly
-        # This doesn't apply to the text conversion
-        def on_conversion_task_completed():
-            print("NOW WE FREAKING CHARGE U!!!!!!!!1", file=sys.stderr)
-            page_count: int = file_utils.get_file_metadata(server, md5_name, "page_count")
-            if page_count > 10 and convert_type != "text" and session.get("card_connected"):
-                pages_processed = page_count - 10  # Numbers of pages we are to charge the user (first 10 are free)
-                database = DBManager(pass_file="/run/secrets/db-password")
-                database.add_pages_processed(session.get("email"), pages_processed)
-
-        if convert_type != "text":
-            set_task_attribute(task_id, "page_limit", page_limit)
-            on_task_status("completed", task_id, on_conversion_task_completed)
-
         print(f"*** Converting {filename} to {convert_type} ***", file=sys.stderr)
 
-        # FIXME: Get extension_type from md5 metadata
         extension_type: str = file_utils.get_file_metadata(server, md5_name, "extension_type")
-
-        match convert_type:
-            case "text":
-                server.add_background_task(
-                    document_processing.async_document2json,
-                    server,
-                    filename,
-                    md5_name,
-                    extension_type,
-                    task_id,
-                    request.remote_addr,
-                )
-            case "flashcards":
-                server.add_background_task(
-                    document_processing.async_json2flashcards,
-                    server,
-                    filename,
-                    md5_name,
-                    task_id,
-                )
-            case "keywords":
-                server.add_background_task(
-                    document_processing.async_json2keywords,
-                    server,
-                    filename,
-                    md5_name,
-                    task_id,
-                )
-            case "test":
-                server.add_background_task(
-                    document_processing.async_json2test,
-                    server,
-                    filename,
-                    md5_name,
-                    task_id,
-                    conversion_options,
-                )
-            case _:
-                set_task_status(task_id, "error")
-                return {"error:": "No convert_type found."}
+        if convert_type == "text":
+            server.add_background_task(
+                document_processing.async_document2json,
+                server,
+                filename,
+                md5_name,
+                extension_type,
+                task_id,
+                request.remote_addr,
+            )
+        elif convert_type in ["flashcards", "keywords", "test"]:
+            server.add_background_task(
+                document_processing.async_json2convert_type,
+                server,
+                convert_type,
+                conversion_options,
+                filename,
+                md5_name,
+                task_id,
+            )
+        else:
+            set_task_status(task_id, "error")
+            return {"error:": "No convert_type found."}
 
         # Return the task ID to the client
         return jsonify({"task_id": task_id})
@@ -773,6 +773,7 @@ async def results():
     return await render_template(
         "results.html",
         last_updated=file_utils.dir_last_updated("./src/static"),
+        single_item_cost=server.config["SINGLE_ITEM_COST"],
     )
 
 

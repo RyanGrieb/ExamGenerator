@@ -86,7 +86,7 @@ window.addEventListener("load", async () => {
     document.createEle;
     // Generate HTML for the list with checkboxes
     const ul_element = document.createElement("ul");
-    json_data.forEach((qa_pair, index) => {
+    json_data["data"].forEach((qa_pair, index) => {
       // Create list item
       const li_element = document.createElement("li");
 

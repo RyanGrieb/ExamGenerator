@@ -12,14 +12,14 @@ from werkzeug.datastructures import FileStorage
 from pptx import Presentation
 import pypdf
 
+from .. import file_utils
+
 from .async_task import (
     set_task_status,
     set_task_progress,
     set_task_attribute,
-    get_task_attribute,
 )
 
-from .. import file_utils
 import re
 from filelock import FileLock
 
@@ -283,7 +283,7 @@ def merge_pdf_json_elements(elements):
 
 
 # Parses the json file & creates a formatted .txt file of the PDF for ChatGPT to read.
-def json2text(server: Quart, md5_name: str, page_limit=-1):
+def json2text(server: Quart, md5_name: str):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: json2text")
 
@@ -358,10 +358,6 @@ def json2text(server: Quart, md5_name: str, page_limit=-1):
         page_elements = []
         for json_item in truncated_json_data:
             item_page_number = json_item["metadata"]["page_number"]
-
-            if page_limit != -1 and item_page_number > page_limit:
-                print(f"HIT PAGE LIMIT FOR USER AT: {page_limit}")
-                break
 
             if item_page_number != current_page:
                 # End the current page block
@@ -497,7 +493,7 @@ async def gpt_generate_test_questions(server, md5_name, data, conversion_options
     return new_test_questions
 
 
-async def gpt_generate_definitions(server, md5_name, data):
+async def gpt_generate_definitions(server, md5_name, data, conversion_options: dict):
     logger: logging.Logger = get_logger_for_file(server, md5_name)
     logger.info("Function: gpt_generate_definitions")
 
@@ -545,7 +541,7 @@ async def gpt_generate_definitions(server, md5_name, data):
     return definition_pairs
 
 
-async def gpt_generate_qa(server, md5_name, data):
+async def gpt_generate_qa(server, md5_name, data, conversion_options: dict):
     async def reprocess_response(response_data):
         prompt = f"Fill any empty answer (A:) with a correct answer to the question (Q:) above. Your output is *REQUIRED!!!!* include the QUESTION (Q:) AND ANSWER (A:) or everyone dies. Here is the data to process: {response_data}"
 
@@ -655,122 +651,17 @@ async def gpt_generate_qa(server, md5_name, data):
     return qa_sets
 
 
-async def async_json2test(server: Quart, filename: str, md5_name: str, task_id: str, conversion_options: dict):
+async def async_json2convert_type(
+    server: Quart, convert_type: str, conversion_options: dict, filename: str, md5_name: str, task_id: str
+):
+    gpt_generate_functions = {
+        "flashcards": gpt_generate_qa,
+        "keywords": gpt_generate_definitions,
+        "test": gpt_generate_test_questions,
+    }
     logger: logging.Logger = get_logger_for_file(server, md5_name)
-    logger.info("Function: async_json2test")
+    logger.info(f"Function: async_json2convert_type ({convert_type})")
 
-    try:
-        # Create directory if it doesn't exist.
-        os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
-        processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
-
-        with FileLock(f"{processed_file}.lock"):
-            # Check if file already exists and test questions for it was generated, if so, set the task status as completed
-            if os.path.isfile(processed_file):
-                with open(processed_file, "r") as file:
-                    if "test" in json.load(file):
-                        # TODO: Apply conversion_options in the JSON, check if they match and re-do it if not.
-                        logger.debug(f"Test already exists for {filename}, returning...")
-                        set_task_status(task_id, "completed")
-                        return
-
-        page_limit = get_task_attribute(task_id, "page_limit")
-        pdf_text = json2text(server, md5_name, page_limit)
-
-        logger.debug("JSON text (converted from JSON): ")
-        logger.debug(pdf_text)
-
-        truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
-        logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
-
-        generated_test_questions = []
-        for index, text_chunk in enumerate(truncated_pdf_text):
-            test_questions = await gpt_generate_test_questions(server, md5_name, text_chunk, conversion_options)
-            if test_questions is None:
-                continue
-            generated_test_questions = generated_test_questions + test_questions
-            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
-
-        pages_processed = page_limit
-        if pages_processed == -1:
-            pages_processed = file_utils.get_file_metadata(server, md5_name, "page_count")
-
-        append_json_value_to_file(
-            processed_file,
-            "test",
-            {"pages_processed": pages_processed, "data": generated_test_questions},
-        )
-        set_task_status(task_id, "completed")
-        logger.debug("Test Generation Successful.")
-
-    except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
-        print(error_message, file=sys.stderr)
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        set_task_status(task_id, "error")
-
-
-async def async_json2keywords(server: Quart, filename: str, md5_name: str, task_id: str):
-    logger: logging.Logger = get_logger_for_file(server, md5_name)
-    logger.info("Function: async_json2keywords")
-
-    try:
-        # Create directory if it doesn't exist.
-        os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
-        processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
-
-        with FileLock(f"{processed_file}.lock"):
-            # Check if file already exists and q&a for it was generated, if so, set the task status as completed
-            if os.path.isfile(processed_file):
-                with open(processed_file, "r") as file:
-                    if "keywords" in json.load(file):
-                        logger.debug(f"Definition already exists for {filename}, returning...")
-                        set_task_status(task_id, "completed")
-                        return
-
-        page_limit = get_task_attribute(task_id, "page_limit")
-        pdf_text = json2text(server, md5_name, page_limit)
-
-        logger.debug("JSON text (converted from JSON): ")
-        logger.debug(pdf_text)
-
-        truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
-        logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
-
-        generated_definitions = []
-        for index, text_chunk in enumerate(truncated_pdf_text):
-            definitions = await gpt_generate_definitions(server, md5_name, text_chunk)
-            if definitions is None:
-                continue
-            generated_definitions = generated_definitions + definitions
-            set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
-
-        pages_processed = page_limit
-        if pages_processed == -1:
-            pages_processed = file_utils.get_file_metadata(server, md5_name, "page_count")
-
-        append_json_value_to_file(
-            processed_file,
-            "keywords",
-            {"pages_processed": pages_processed, "data": generated_definitions},
-        )
-        set_task_status(task_id, "completed")
-        logger.debug("Definition Generation Successful.")
-
-    except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
-        print(error_message, file=sys.stderr)
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        set_task_status(task_id, "error")
-
-
-async def async_json2flashcards(server: Quart, filename: str, md5_name: str, task_id: str):
-    logger: logging.Logger = get_logger_for_file(server, md5_name)
-    logger.info("Function: async_json2flashcard")
-
-    # try:
     # Create directory if it doesn't exist.
     os.makedirs(server.config["PROCESSED_FOLDER"], exist_ok=True)
     processed_file = f'{server.config["PROCESSED_FOLDER"]}/{md5_name}.json'
@@ -779,13 +670,12 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
         # Check if file already exists and q&a for it was generated, if so, set the task status as completed
         if os.path.isfile(processed_file):
             with open(processed_file, "r") as file:
-                if "flashcards" in json.load(file):
-                    logger.debug(f"Flashcards already exists for {filename}, returning...")
+                if convert_type in json.load(file):
+                    logger.debug(f"{convert_type} already exists for {filename}, returning...")
                     set_task_status(task_id, "completed")
                     return
 
-    page_limit = get_task_attribute(task_id, "page_limit")
-    pdf_text = json2text(server, md5_name, page_limit)
+    pdf_text = json2text(server, md5_name)
 
     logger.debug("JSON text (converted from JSON): ")
     logger.debug(pdf_text)
@@ -793,34 +683,26 @@ async def async_json2flashcards(server: Quart, filename: str, md5_name: str, tas
     truncated_pdf_text = truncate2gpt_tokens(server, md5_name, pdf_text, just_split_pages=False)
     logger.debug(f"Length of truncated_pdf_text: {len(truncated_pdf_text)}")
 
-    generated_qa = []
+    generated_sets = []
     for index, text_chunk in enumerate(truncated_pdf_text):
-        qa = await gpt_generate_qa(server, md5_name, text_chunk)
-        if qa is None:
+        set = await gpt_generate_functions[convert_type](server, md5_name, text_chunk, conversion_options)
+        if set is None:
             continue
-        generated_qa = generated_qa + qa
+        generated_sets = generated_sets + set
         set_task_progress(task_id, float(index + 1) / float(len(truncated_pdf_text)))
-
-    pages_processed = page_limit
-    if pages_processed == -1:
-        pages_processed = file_utils.get_file_metadata(server, md5_name, "page_count")
 
     append_json_value_to_file(
         processed_file,
-        "flashcards",
-        {"pages_processed": pages_processed, "data": generated_qa},
+        convert_type,
+        {"data": generated_sets},
     )
-    set_task_status(task_id, "completed")
-    logger.debug("Flashcard Generation Successful.")
 
-    """
-    except Exception as e:
-        error_message = f"Error: {str(e)} at line {traceback.extract_tb(e.__traceback__)[0].lineno}"
-        print(error_message, file=sys.stderr)
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        set_task_status(task_id, "error")
-    """
+    # Update the file's metadata & specify our generated data_length
+    metadata_file_path = os.path.join(server.config["METADATA_FOLDER"], f"{md5_name}.json")
+    file_utils.append_file_json_value(metadata_file_path, "data_lengths", {convert_type: len(generated_sets)})
+
+    set_task_status(task_id, "completed")
+    logger.debug(f"{convert_type} Generation Successful.")
 
 
 def append_json_value_to_file(filename: str, key: str, value: object):
