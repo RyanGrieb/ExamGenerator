@@ -11,65 +11,68 @@
         <h2 class="center-text">Generate flashcards, test questions, and more</h2>
     </div>
 </div>
-<div class="upload-area center-horizontally center-inside-elems" ondrop="dropHandler(event);"
-    ondragover="dragOverHandler(event);">
-    <div class="center-inside-elems">
-        <form method="post" enctype="multipart/form-data">
-            <label class="button-1" for="file-upload"
-                style="display: flex; flex-direction: column; height: 75px; width: 225px;">
-                <div>
-                    <i class="fa fa-cloud-upload"></i> Upload Files
-                </div>
-                <label style="font-size: 15px; padding: 0; margin: 0;">(pdf & power-point only)</label>
-            </label>
-            <input id="file-upload" type="file" name="file"
-                accept="application/pdf, application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                onchange="upload_files()" multiple></input>
+<div class="upload-content">
+    <div class="upload-area" id="scrollbar2" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+        <div class="upload-header">
+            <form method="post" enctype="multipart/form-data">
+                <label class="button-1 center-horizontally" for="file-upload"
+                    style="display: flex; flex-direction: column; height: 75px; width: 225px;">
+                    <div>
+                        <i class="fa fa-cloud-upload"></i> Upload Files
+                    </div>
+                    <label style="font-size: 15px; padding: 0; margin: 0;">(pdf & power-point only)</label>
+                </label>
+                <input id="file-upload" type="file" name="file"
+                    accept="application/pdf, application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                    onchange="upload_files()" multiple></input>
 
-        </form>
+            </form>
 
-        {% if session.logged_in %}
-        {% if session.card_connected %}
-        <p class="center-text">Pricing: First 10 results free, then 2¢ per result.</p>
-        {% else %}
-        <p class="center-text">Free accounts can only view up to 10 results. <a href="/profile">Upgrade</a> for more.
-        </p>
-        {% endif %}
-        {% else %}
-        <p class="center-text">Guests can only view up to 5 results. <a href="/register">Register</a> for more</p>
-        {% endif %}
+            {% if session.logged_in %}
+            {% if session.card_connected %}
+            <p class="center-text">Pricing: First 10 results free, then 2¢ per result.</p>
+            {% else %}
+            <p class="center-text">Free accounts can only view up to 10 results. <a href="/profile">Upgrade</a> for
+                more.
+            </p>
+            {% endif %}
+            {% else %}
+            <p class="center-text">Guests can only view up to 5 results. <a href="/register">Register</a> for more</p>
+            {% endif %}
+        </div>
         <div class="convert-region center-inside-elems">
             <ul>
             </ul>
         </div>
     </div>
-</div>
-<div class="center-text">
-    <p class="error-text"></p>
-</div>
-<div class="convert-section center-horizontally center-inside-elems">
-    <div class="convert-options">
-        <p>Conversion Options:</p>
-        <input type="radio" id="radio-flashcards" name="convert_type" checked="checked" value="flashcards">
-        <label for="radio-flashcards">Flashcards</label><br>
-        <input type="radio" id="radio-test" name="convert_type" value="test">
-        <label for="radio-test">Test/Quiz Questions</label><br>
-        <div class="convert-test-options" style="display: none;">
-            &emsp;<input type="checkbox" id="check-multiple-choice" name="test_type" checked="checked"
-                value="test_multiple_choice">
-            <label for="check-multiple-choice">Multiple Choice</label><br>
-            &emsp;<input type="checkbox" id="check-true-false" name="test_type" checked="checked"
-                value="test_true_false">
-            <label for="check-true-false">True/False</label><br>
-            &emsp;<input type="checkbox" id="check-free-response" name="test_type" checked="checked" ,
-                value="test_free_response">
-            <label for="check-free-response">Free Response</label><br>
-        </div>
-        <input type="radio" id="radio-definition" name="convert_type" value="keywords">
-        <label for="radio-definition">Keyword/Definition</label>
+
+    <div class="center-text">
+        <p class="error-text"></p>
     </div>
-    <button class="file-convert-btn button-1 hidden" onclick="convert_files()">Convert
-        Files</button>
+    <div class="convert-section center-horizontally center-inside-elems">
+        <div class="convert-options">
+            <p>Conversion Options:</p>
+            <input type="radio" id="radio-flashcards" name="convert_type" checked="checked" value="flashcards">
+            <label for="radio-flashcards">Flashcards</label><br>
+            <input type="radio" id="radio-test" name="convert_type" value="test">
+            <label for="radio-test">Test/Quiz Questions</label><br>
+            <div class="convert-test-options" style="display: none;">
+                &emsp;<input type="checkbox" id="check-multiple-choice" name="test_type" checked="checked"
+                    value="test_multiple_choice">
+                <label for="check-multiple-choice">Multiple Choice</label><br>
+                &emsp;<input type="checkbox" id="check-true-false" name="test_type" checked="checked"
+                    value="test_true_false">
+                <label for="check-true-false">True/False</label><br>
+                &emsp;<input type="checkbox" id="check-free-response" name="test_type" checked="checked" ,
+                    value="test_free_response">
+                <label for="check-free-response">Free Response</label><br>
+            </div>
+            <input type="radio" id="radio-definition" name="convert_type" value="keywords">
+            <label for="radio-definition">Keyword/Definition</label>
+        </div>
+        <button class="file-convert-btn button-1 hidden" onclick="convert_files()">Convert
+            Files</button>
+    </div>
 </div>
 <!-- Temporary DB values test: 
 <ul style="display: none;">

@@ -25,9 +25,11 @@ function inform_limited_data_output(results_output, conversion_type, file_data) 
     show_more_region.classList.add("show-more-region");
     const prompt_text = document.createElement("h2");
     prompt_text.classList.add("center-text");
+    const unlock_button = document.createElement("button");
+
     switch (user_type) {
       case "guest":
-        prompt_text.innerHTML = `Guests are limited to view 5 results. <a href='/register'>Register</a> to view all <b>${total_data_length}</b> results.`;
+        prompt_text.innerHTML = `Guests are limited to view 5 results. <a href='/register'>Register</a> to view more of <b>${total_data_length}</b> results.`;
         break;
       case "free":
         prompt_text.innerHTML = `Free accounts limited to view 10 results. <a href='add-payment'>Upgrade</a> to view all <b>${total_data_length}</b> results.`;
@@ -38,16 +40,16 @@ function inform_limited_data_output(results_output, conversion_type, file_data) 
         const cost = parseFloat(single_item_cost * remaining_items).toFixed(2);
         prompt_text.innerHTML = `Unlock ${remaining_items} remaining results for $${cost}.`;
 
-        const unlock_button = document.createElement("button");
         unlock_button.classList.add("button-1", "unlock-button");
         unlock_button.textContent = "Unlock";
         unlock_button.onclick = () =>
           prompt_unlock_file(results_output, conversion_type, file_data, cost, remaining_items);
-        show_more_region.appendChild(unlock_button);
         break;
     }
 
     show_more_region.appendChild(prompt_text);
+
+    show_more_region.appendChild(unlock_button);
     results_output.appendChild(show_more_region);
   }
 }
@@ -109,12 +111,11 @@ async function display_file_data(filename, md5_name, conversion_type) {
 
   results_output.innerHTML = "";
 
-  const title_elem = document.createElement("h2");
+  const title_elem = document.querySelector(".document-title");
 
   // Display error message to user if present.
   if (file_data.error_msg != undefined) {
     title_elem.innerHTML = `Error processing ${filename}`;
-    results_output.appendChild(title_elem);
 
     const error_elem = document.createElement("p");
     error_elem.innerHTML = file_data.error_msg;
@@ -122,44 +123,43 @@ async function display_file_data(filename, md5_name, conversion_type) {
     return;
   }
 
+  const results_data_div = document.createElement("div");
+  results_data_div.classList.add("results-data");
+
   if (conversion_type == "test") {
     title_elem.innerHTML = `${filename} Test/Quiz Questions:`;
-    results_output.appendChild(title_elem);
 
     inform_limited_data_output(results_output, conversion_type, file_data);
     // Construct Test Question/Answer pairs
-    const test_questions_set_div = document.createElement("div");
     for (const [index, test_question_set] of file_data.data[conversion_type].entries()) {
       const p_element = document.createElement("p");
       p_element.className = "output-text";
       const question = test_question_set[1].replaceAll("\n", "<br>");
       const answer = test_question_set[2];
       p_element.innerHTML = `<b>${index + 1}.</b> ${question}<br><br>${answer}`;
-      test_questions_set_div.appendChild(p_element);
+      results_data_div.appendChild(p_element);
     }
-    results_output.appendChild(test_questions_set_div);
+    results_output.appendChild(results_data_div);
   }
 
   if (conversion_type == "keywords") {
     title_elem.innerHTML = `${filename} Keyword/Definition Pair:`;
-    results_output.appendChild(title_elem);
 
     inform_limited_data_output(results_output, conversion_type, file_data);
 
     // Construct Keyword/Definition pairs
-    const keywords_sets_div = document.createElement("div");
+
     for (const keyword_set of file_data.data[conversion_type]) {
       const p_element = document.createElement("p");
       p_element.className = "output-text";
       p_element.innerHTML = `<u>${keyword_set[0]}</u>: ${keyword_set[1]}`;
-      keywords_sets_div.appendChild(p_element);
+      results_data_div.appendChild(p_element);
     }
-    results_output.appendChild(keywords_sets_div);
+    results_output.appendChild(results_data_div);
   }
 
   if (conversion_type == "flashcards") {
     title_elem.innerHTML = `${filename} Flashcard Set:`;
-    results_output.appendChild(title_elem);
 
     try {
       // Fetch the flashcard HTML
@@ -183,15 +183,14 @@ async function display_file_data(filename, md5_name, conversion_type) {
       inform_limited_data_output(results_output, conversion_type, file_data);
 
       // Construct Q&A sets
-      const qa_sets_div = document.createElement("div");
       for (const qa_set of file_data.data["flashcards"]) {
         const p_element = document.createElement("p");
         p_element.className = "output-text";
         p_element.innerHTML = `<b>${qa_set[0]}</b> <br><br> ${qa_set[1]}`;
-        qa_sets_div.appendChild(p_element);
+        results_data_div.appendChild(p_element);
       }
 
-      results_output.appendChild(qa_sets_div);
+      results_output.appendChild(results_data_div);
     } catch (error) {
       console.error("There was a problem fetching the flashcard HTML:", error);
     }
@@ -221,7 +220,7 @@ function get_logs(md5_name) {
   console.log("Getting logs for " + md5_name);
   window.open(`/logs/${md5_name}`);
 }
-
+/*
 function add_qa_set_to_page(filename, md5_name, qa_set, final_generation = false) {
   const qaSetDiv = document.querySelector(`#qa-set-${md5_name}`);
 
@@ -239,7 +238,7 @@ function add_qa_set_to_page(filename, md5_name, qa_set, final_generation = false
     paragraph.innerHTML = line;
     qaSetDiv.appendChild(paragraph);
   });
-}
+}*/
 
 // Updates the HTML from the get request. Returns 'ok' if successful or 'error_type' if error occurs.
 async function get_converted_file(file_data, conversion_type) {
@@ -365,7 +364,7 @@ function set_file_status(md5_name, conversion_type, iconName) {
       strokeWidth: 14,
       easing: "easeInOut",
       duration: 4000,
-      color: "var(--gradient-4)",
+      color: "var(--surface-4)",
       trailColor: "#eee",
       trailWidth: 1,
       svgStyle: { width: "100%", height: "100%" },

@@ -1,9 +1,11 @@
 * ASAP BEFORE ADVERTISTING*
+- Add scrollbar to upload area.
+- Implement dark/light mode detection & dynamicaly load css based on user's desktop theme.
+- Update production DB to mirror our development one.
+- Create admin account to test on production
 - Sign in w/ google.
 - Sign in w/ apple.
-- Implement dark/light mode detection & dynamicaly load css based on user's desktop theme.
 - Test payments on production
-- Create admin account to test on production
 - Google adsense
 - setup support email (pdf2flashcards@gmail.com would work for now. doc2ai@gmail.com ? ? ? ?)
 - Google ad compaign: Hire some dude off fiverr and make the following images
@@ -47,6 +49,8 @@ https://ankigpt.help/deck/8499b561-0f84-4366-9f5e-482817e29445
 
 
 * Not as important things to do *
+- When users hover over buttons, display a tooltip telling users what they do.
+- Make flashcard size bigger
 - If we remove a file (front-end), make sure we don't have any running get_task_status w/ the associated file & it's conversion_type.
 - Test viewing paid files from user 1 as user 2. User 2 should NOT be able to see all results. (**** I think this is fixed.)
 - Limit guest/free accounts to 1 / 5 documents a day.

@@ -203,8 +203,8 @@ function create_progress_bar(formatted_file_name) {
   const progressBar = new ProgressBar.Line(liDiv, {
     strokeWidth: 4,
     easing: "easeInOut",
-    duration: 500,
-    color: "var(--gradient-4)",
+    duration: 100,
+    color: "var(--surface-4)",
     trailColor: "#eee",
     trailWidth: 1,
     svgStyle: { width: "100%", height: "100%" },

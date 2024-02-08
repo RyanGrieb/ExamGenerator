@@ -1,58 +1,58 @@
-:root {
-  --gradient-1: #121212;
-  --gradient-2: #202020;
-  --gradient-3: #4b484e;
-  --gradient-4: #74607e;
-  --gradient-5: #e9e9e9;
-  --flashcard-background: var(--gradient-2);
-  --flashcard-color: var(--gradient-5);
-  --font-family: "Trebuchet MS", "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", sans-serif;
-}
-
 a {
-  color: var(--gradient-5);
+  color: var(--surface-5);
 }
 
 input[type="radio"] {
-  accent-color: var(--gradient-1);
+  accent-color: var(--input-accent-color);
 }
 
 input[type="checkbox"] {
-  accent-color: var(--gradient-1);
+  accent-color: var(--input-accent-color);
 }
 
 #checkout {
   /* Set background color to dark */
-  background-color: var(--gradient-1) !important;
+  background-color: var(--surface-1) !important;
 }
 
 .gradient-1 {
-  background-color: var(--gradient-1);
+  background-color: var(--surface-1);
 }
 
 .gradient-2 {
-  background-color: var(--gradient-2);
+  background-color: var(--surface-2);
 }
 
 .gradient-3 {
-  background-color: var(--gradient-3);
+  background-color: var(--surface-3);
 }
 
 .gradient-4 {
-  background-color: var(--gradient-4);
+  background-color: var(--surface-4);
 }
 
 .gradient-5 {
-  background-color: var(--gradient-5);
+  background-color: var(--surface-5);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   /*background-color:white;*/
-  /*background: radial-gradient(circle at center in hsl shorter hue, var(--gradient-1), var(--gradient-2));*/
-  background: var(--gradient-1);
+  /*background: radial-gradient(circle at center in hsl shorter hue, var(--surface-1), var(--surface-2));*/
+  background: var(--surface-1);
   font-family: var(--font-family);
-  color: white;
+  color: var(--text-color-1);
   margin-top: 0;
+  padding: 10px;
+  padding-top: 0;
 }
 
 label {
@@ -67,7 +67,7 @@ li a {
   text-decoration: none;
   font-family: var(--font-family);
   font-size: 20px;
-  color: var(--gradient-5);
+  color: var(--surface-5);
 }
 
 li a:hover {
@@ -75,16 +75,18 @@ li a:hover {
 }
 
 nav {
-  margin-left: 10px;
-  margin-right: 10px;
   display: flex;
   justify-content: space-between; /* To evenly distribute the items horizontally */
   /*background-color: rgba(3, 10, 223, 0.116);*/
-  background-color: var(--gradient-3);
+  background-color: var(--surface-3);
   padding: 10px;
   margin-top: 0;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
+  border: 1px solid var(--surface-4);
+  border-top: none;
+
+  flex: 0 0 auto; /* div A should remain its original height (neither expand nor shrink) */
 }
 
 nav ul {
@@ -102,13 +104,15 @@ nav li {
 
 nav a {
   text-decoration: none;
-  color: white;
+  color: var(--font-color-1);
   font-size: 25px;
+  padding: 4px;
 }
 
 /* Add hover effect for links */
 nav a:hover {
-  text-decoration: underline;
+  background-color: var(--surface-1);
+  border-radius: 8px;
 }
 
 h1 {
@@ -131,7 +135,7 @@ p {
 #toc-container {
   margin: auto;
   margin-top: 30px;
-  background: var(--gradient-3) none repeat scroll 0 0;
+  background: var(--surface-3) none repeat scroll 0 0;
   border: 1px solid #aaa;
   display: table;
   font-size: 95%;
@@ -192,18 +196,35 @@ p {
   margin-bottom: 6px;
 }
 
+.upload-content {
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.upload-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
 .upload-area {
   padding: 4px;
-  background-color: var(--gradient-3);
-  max-width: 700px;
-  min-width: 380px;
+  background-color: var(--surface-3);
+  width: 50%;
   min-height: 250px;
-  border: 8px dashed var(--gradient-4); /* Optional: Add a dashed border for visual style */
+  height: 50%;
+  border: 8px dashed var(--surface-4); /* Optional: Add a dashed border for visual style */
   border-radius: 8px;
+  overflow-y: auto;
+
+  display: flex;
+  flex-direction: column;
 }
 
 .upload-area a {
-  color: var(--gradient-5);
+  color: var(--surface-5);
 }
 
 #converting-files-list {
@@ -267,7 +288,7 @@ input[type="submit"] {
 .button-1 {
   align-items: center;
   appearance: none;
-  background-image: radial-gradient(100% 100% at 100% 0, var(--gradient-4) 0, var(--gradient-4) 100%);
+  background-image: radial-gradient(100% 100% at 100% 0, var(--surface-4) 0, var(--surface-4) 100%);
   border: 0;
   border-radius: 6px;
   box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px,
@@ -298,17 +319,17 @@ input[type="submit"] {
 }
 
 .button-1:focus {
-  box-shadow: var(--gradient-5) 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px,
-    rgba(45, 35, 66, 0.3) 0 7px 13px -3px, var(--gradient-5) 0 -3px 0 inset;
+  box-shadow: var(--surface-5) 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px,
+    rgba(45, 35, 66, 0.3) 0 7px 13px -3px, var(--surface-5) 0 -3px 0 inset;
 }
 
 .button-1:hover {
-  box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, var(--gradient-3) 0 -3px 0 inset;
+  box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, var(--surface-6) 0 -3px 0 inset;
   transform: translateY(-2px);
 }
 
 .button-1:active {
-  box-shadow: var(--gradient-2) 0 3px 7px inset;
+  box-shadow: var(--surface-6) 0 3px 7px inset;
   transform: translateY(2px);
 }
 
@@ -316,7 +337,7 @@ input[type="submit"] {
   width: 32px;
   height: 32px;
   vertical-align: middle;
-  border: 5px solid var(--gradient-4);
+  border: 5px solid var(--surface-4);
   border-bottom-color: #3c4fe0;
   border-radius: 50%;
   box-sizing: border-box;
@@ -414,7 +435,7 @@ input[type="submit"] {
   margin: 4px;
   width: 42px;
   height: 42px;
-  background-color: var(--gradient-3);
+  background-color: var(--flashcard-btn-background-color);
   flex-shrink: 0;
   border-radius: 10px;
   cursor: pointer;
@@ -436,7 +457,7 @@ input[type="submit"] {
   width: 42px;
   height: 42px;
 
-  background-color: var(--gradient-3);
+  background-color: var(--flashcard-btn-background-color);
 
   position: absolute;
   top: 0;
@@ -490,23 +511,32 @@ input[type="submit"] {
   -webkit-transform: rotate(135deg);
 }
 
-.results-layout {
+.results-body {
   margin-top: 10px;
   display: flex;
+  width: 100%;
   height: 100%;
   min-height: 0;
 }
 
 .results-files {
-  background-color: var(--gradient-2);
-  border: 6px ridge var(--gradient-4);
+  background-color: var(--surface-2);
+  border: 1px solid var(--surface-4);
   flex-grow: 0; /* do not grow   - initial value: 0 */
   flex-shrink: 0; /* do not shrink - initial value: 1 */
   flex-basis: 20em; /* width/height  - initial value: auto */
   padding: 4px;
-  align-self: baseline;
   border-radius: 8px;
   max-width: 30%;
+  overflow-y: auto;
+}
+
+.results-files h3 {
+  font-size: 200%;
+}
+
+.results-files hr {
+  border-color: var(--text-color-1);
 }
 
 .results-files ul {
@@ -514,12 +544,8 @@ input[type="submit"] {
   padding: 4px;
 }
 
-.results-files li:last-child {
-  border-bottom: 1px solid white;
-}
-
 .results-files li:hover {
-  background-color: var(--gradient-2);
+  background-color: var(--surface-1);
 }
 
 .results-files .loader {
@@ -556,18 +582,27 @@ input[type="submit"] {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-top: 1px solid black;
-  border-left: 1px solid black;
-  border-right: 1px solid black;
   padding-left: 4px;
   padding-right: 4px;
-  background-color: var(--gradient-3);
-  border-radius: 3px;
+  background-color: var(--surface-3);
+  border-radius: 6px;
+  margin-top: 5px;
+  border: 1px solid var(--surface-4);
+}
+
+.results-right {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: 8px;
 }
 
 .results-output {
   flex-grow: 1;
-  padding: 8px;
+  overflow-y: auto;
+  padding-right: 8px;
+  padding-top: 8px;
 }
 
 .results-output h2 {
@@ -578,9 +613,9 @@ input[type="submit"] {
 .results-output .output-text {
   margin: 0;
   margin-top: 5px;
-  background-color: var(--gradient-3);
+  background-color: var(--surface-3);
   padding: 4px;
-  border: 6px ridge var(--gradient-4);
+  border: 1px solid var(--surface-4);
   border-radius: 8px;
 }
 
@@ -589,6 +624,13 @@ input[type="submit"] {
   justify-content: space-between;
   align-items: center;
   text-align: center;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .convert-region ul {
@@ -622,7 +664,7 @@ input[type="submit"] {
   width: 42px;
   height: 32px;
   border-radius: 8px;
-  background-color: var(--gradient-4);
+  background-color: var(--surface-4);
   border: none;
   color: white;
 }
@@ -638,12 +680,11 @@ input[type="submit"] {
 }
 
 .convert-section {
-  max-width: 650px; /* Set your desired width */
-  min-width: 310px;
+  width: 50%;
   margin-top: 10px;
   padding: 4px;
-  border: 6px double var(--gradient-4);
-  background-color: var(--gradient-3);
+  border: 1px solid var(--surface-4);
+  background-color: var(--surface-3);
   border-radius: 8px;
 }
 
@@ -669,13 +710,13 @@ input[type="submit"] {
 }
 
 .prompt-box {
-  background-color: var(--gradient-3);
+  background-color: var(--surface-3);
   width: 300px;
   height: 180px;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-  border: 6px double var(--gradient-4);
+  border: 1px solid var(--surface-4);
 }
 
 .prompt-buttons {
@@ -688,20 +729,21 @@ input[type="submit"] {
 }
 
 .prompt-container a {
-  color: var(--gradient-5);
+  color: var(--surface-5);
 }
 
 .results-options {
-  border: 6px double var(--gradient-4);
-  background-color: var(--gradient-3);
-  margin: 4px;
+  border: 1px solid var(--surface-4);
+  background-color: var(--surface-2);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   border-radius: 8px;
+  /*flex: 0 0 auto;*/
 }
 
 .export-data-list {
-  background-color: var(--gradient-3);
+  background-color: var(--surface-3);
 }
 
 .results-options button {
@@ -729,10 +771,34 @@ input[type="submit"] {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: var(--gradient-3);
+  background-color: var(--surface-3);
   padding: 15px;
-  border: 6px ridge var(--gradient-4);
+  border: 1px solid var(--surface-4);
   border-radius: 8px;
+}
+
+#scrollbar2::-webkit-scrollbar {
+  width: 20px;
+}
+
+#scrollbar2::-webkit-scrollbar-track {
+  border-radius: 8px;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  background-color: var(--scroll-background);
+}
+
+#scrollbar2::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 9px;
+  background-clip: content-box;
+  background-color: var(--scroll-scrubber);
+}
+
+.body-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
 }
 
 /* The typing effect */
