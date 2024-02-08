@@ -18,9 +18,9 @@ html {
   justify-content: center;
   align-items: center;
   padding: 10px;
-  border: 6px ridge var(--gradient-4);
+  border: 6px ridge var(--surface-4);
   border-radius: 8px;
-  background-color: var(--gradient-2);
+  background-color: var(--surface-2);
   width: 400px;
   height: 350px;
 }
@@ -41,8 +41,8 @@ html {
 }
 
 .login-box input {
-  color: white;
-  background-color: var(--gradient-1);
+  color: var(--text-color-1);
+  background-color: var(--surface-1);
   width: 250px;
   padding: 10px;
   margin-top: 10px;
@@ -52,11 +52,12 @@ html {
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px var(--gradient-1) inset !important;
+input:-webkit-autofill:active,
+input:-webkit-autofill::first-line {
+  -webkit-box-shadow: 0 0 0 30px var(--surface-1) inset !important;
 }
 
 /*Change text in autofill textbox*/
 input:-webkit-autofill {
-  -webkit-text-fill-color: white !important;
+  -webkit-text-fill-color: var(--text-color-1) !important;
 }

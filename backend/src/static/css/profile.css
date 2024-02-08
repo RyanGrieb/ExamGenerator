@@ -8,9 +8,9 @@
 
 .profile-container {
   padding: 16px;
-  border: 1px solid var(--gradient-4);
+  border: 1px solid var(--surface-4);
   border-radius: 8px;
-  background-color: var(--gradient-2);
+  background-color: var(--surface-2);
   width: fit-content;
 }
 
