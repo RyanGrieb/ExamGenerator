@@ -35,7 +35,9 @@ An AI web-app that scans PDFs and generates associated questions and answers.
 4. `cd` into the `./backend` file, and run `pip install -r requirements.txt` (You might need to restart VSCode for the imports to load properly)
 5. Go back to the parent directory, `cd ..`
 6. Create the docker containers: `docker compose up -d` (Check if these docker images exist already)
-7. To navigate to the webpage at `localhost:8000`
+7. Find `./data/api-keys/open_ai.txt` and enter your API key there.
+8. Re-build the containers with `docker compose up -d --build`
+9. To navigate to the webpage at `localhost:8000`
 
 To re-build the all the containers after you make changes, run `docker compose up -d --build`.
 

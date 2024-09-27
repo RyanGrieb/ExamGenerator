@@ -37,7 +37,7 @@ import traceback
 from datetime import datetime
 
 UNSTRUCTUED_API_URL = "http://unstructured-api:8000/general/v0/general"
-OPENAI_API_KEY = "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"
+API_KEYS_FOLDER = "./data/api-keys"
 UPLOAD_FOLDER = "./data/file-upload"
 JSON_FOLDER = "./data/file-json"
 PROCESSED_FOLDER = "./data/file-processed"
@@ -53,6 +53,7 @@ SINGLE_ITEM_COST = 0.02
 # Configure quart
 server = Quart(__name__)
 server.config["UNSTRUCTUED_API_URL"] = UNSTRUCTUED_API_URL
+server.config["API_KEYS_FOLDER"] = API_KEYS_FOLDER
 server.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 server.config["JSON_FOLDER"] = JSON_FOLDER
 server.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
@@ -82,12 +83,34 @@ with open("/run/secrets/stripe", "r") as file:
 stripe.api_key = stripe_keys["private"]
 
 
+# Set up OpenAI API key...
+
+# Create /file-upload directory if it doesn't exist.
+if not os.path.exists(server.config["API_KEYS_FOLDER"]):
+    os.makedirs(server.config["API_KEYS_FOLDER"])
+
+open_ai_key_path = os.path.join(server.config["API_KEYS_FOLDER"], "open_ai.txt")
+
+if not os.path.exists(open_ai_key_path):
+    # Create an empty open_ai.txt file
+    with open(open_ai_key_path, "w") as f:
+        f.write("")  # Create an empty file
+
+# Read the API key from the file
+with open(open_ai_key_path, "r") as f:
+    open_ai_api_key = f.read().strip()
+
+# Exit if the API key is empty
+if not open_ai_api_key:
+    print("Error: OpenAI API key is empty. Exiting program.")
+    sys.exit(1)
+
+# Configure OpenAI GPT
+openai.api_key = open_ai_api_key
+
 # server.jinja_env.globals.update(zip=zip)
 # Prevent flask form emptying session variables
 # server.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
-
-# Configure OpenAI GPT
-openai.api_key = OPENAI_API_KEY
 
 
 def get_user_data_limit(md5_name, conversion_type):
