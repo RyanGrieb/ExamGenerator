@@ -31,7 +31,7 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - UNSTRUCTURED_MEMORY_FREE_MINIMUM_MB=750
+      - UNSTRUCTURED_MEMORY_FREE_MINIMUM_MB=2000
     networks:
       - backnet
     command: sh -c 'while :; do docker logs unstructured-api | grep -q "unstructured_api WARNING Rejecting because free memory" && docker restart unstructured-api; sleep 10; done'

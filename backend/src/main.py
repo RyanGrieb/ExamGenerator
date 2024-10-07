@@ -691,8 +691,8 @@ def get_convert_file():
                     data_length = len(data)
 
                     # Limit the number of data (flashcards, sets, test questions) if needed
-                    if user_data_limit != -1:
-                        data = data[:user_data_limit]
+                    # if user_data_limit != -1:
+                    #    data = data[:user_data_limit]
 
                     return jsonify({"data": data, "data_length": data_length})
                 else:

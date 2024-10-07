@@ -86,7 +86,7 @@ async def async_document2json(
         form_data.add_field("encoding", "utf_8")
         form_data.add_field("include_page_breaks", "true")  # FIXME: Not needed?
         form_data.add_field("coordinates", "false")
-        # form_data.add_field("strategy", "auto")
+        form_data.add_field("strategy", "fast")
         # form_data.add_field("hi_res_model_name", "detectron2_onnx")
 
         headers = {"accept": "application/json"}
